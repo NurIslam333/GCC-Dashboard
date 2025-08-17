@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "additional.d.ts",
+    "react-table-config.d.ts",
+    "./src/**/*.ts",
+    "./src/**/*.tsx"
+, "src/pages/index.jsx", "src/config/apiConfig.js.js", "src/hook/useToast.js", "src/pages/normal-slip.jsx", "src/pages/choice-slip.jsx", "src/pages/type-normal-slip.jsx", "src/pages/type-choice-slip.jsx", "src/pages/total-user.jsx", "src/pages/settings.jsx", "src/pages/normal-slip-pending.jsx", "src/pages/normal-slip-compelete.jsx", "src/pages/choice-slip-pending.jsx", "src/pages/choice-slip-processing.jsx", "src/pages/choice-slip-complete.jsx", "src/pages/medical-serial-list.jsx", "src/pages/payment.jsx", "src/pages/notifications.jsx", "src/pages/404.jsx", "src/pages/_document.jsx", "src/pages/_app.jsx", "src/components/KsaSlip/KsaSlip.jsx", "src/components/KuetSlip/KuetSlip.jsx"  ],
+  "exclude": ["node_modules"]
+}
