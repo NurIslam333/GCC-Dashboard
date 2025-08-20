@@ -36,7 +36,8 @@ const validationSchema = Yup.object().shape({
   applied_position: Yup.string().required('Position Applied For is required'),
   city: Yup.string().required('City is required'),
   tcountry: Yup.string().required('Country Travelling To is required'),
-  medicals: Yup.array().required('Medical Center is required'),
+  visa_type: Yup.string().required('Visa Type is required'),
+  medicals: Yup.string().required('Medical Center is required'),
   national_id: Yup.string().when('tcountry', {
     is: 'KW',
     then: Yup.string().required('National ID is required for Kuwait'),
@@ -167,7 +168,8 @@ const typeChoicSlip = () => {
             applied_position: '31',
             tcountry: '',
             city: '',
-            medicals: [],
+            visa_type: '',
+            medicals: '',
           }}
           validationSchema={validationSchema}
           onSubmit={handleSubmit}
@@ -323,13 +325,13 @@ const typeChoicSlip = () => {
                       name="applied_position"
                       className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
                     >
-                      <option value="31" selected>
-                        Labour
-                      </option>
+                      <option value="">Select Position</option>
+                      <option value="31">Labour</option>
                       <option value="59">House Maid</option>
                       <option value="65">Driver</option>
                       <option value="76">Worker</option>
-                      <option value="77">House Boy </option>
+                      <option value="77">House Boy</option>
+                      <option value="108">Other</option>
                     </Field>
                     <ErrorMessage
                       name="applied_position"
@@ -354,10 +356,13 @@ const typeChoicSlip = () => {
                       className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
                     >
                       <option value="">Select your City</option>
+                      <option value="2031">Barisal</option>
+                      <option value="81">Chittagong</option>
+                      <option value="2032">Cumilla</option>
+                      <option value="2033">Coxs Bazar</option>
+                      <option value="2030">Rajshahi</option>
                       <option value="80">Dhaka</option>
-                      {/* <option value="81">Chitagong</option> */}
-                      <option value="2032">Comilla</option>
-                      {/* <option value="83">Sylhet</option> */}
+                      <option value="83">Sylhet</option>
                     </Field>
                     <ErrorMessage
                       name="city"
@@ -368,7 +373,7 @@ const typeChoicSlip = () => {
 
                   {/* item */}
                   <div className="mt-3">
-                    <label>Countryt Travelling To</label>
+                    <label>Country Travelling To</label>
                     <Field
                       as="select"
                       onChange={(e) => {
@@ -378,14 +383,14 @@ const typeChoicSlip = () => {
                       value={values.tcountry || ''}
                       className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
                     >
-                      <option value="Single">Select GCC country</option>
-                      {/* <option value="BH">Bahrain</option> */}
+                      <option value="">Select GCC country</option>
+                      <option value="SA">Saudi Arabia</option>
+                      <option value="UAE">UAE</option>
                       <option value="KW">Kuwait</option>
-                      {/* <option value="OM">Oman</option> */}
-                      {/* <option value="QA">Qatar</option> */}
-                      <option value="SA">Saudi Areabia</option>
-                      {/* <option value="UAE">UAE</option> */}
-                      {/* <option value="YEM">Yemen</option> */}
+                      <option value="QA">Qatar</option>
+                      <option value="BH">Bahrain</option>
+                      <option value="OM">Oman</option>
+                      <option value="YEM">Yemen</option>
                     </Field>
                     <ErrorMessage
                       name="tcountry"
@@ -396,62 +401,57 @@ const typeChoicSlip = () => {
 
                   {/* item */}
                   <div className="mt-3">
-                    <label>Medical Center</label>
-                    {/* <div className="flex items-center gap-1"> */}
-                    {/* <Field
-                        as="select"
-                        name="medicals"
-                        className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
-                      >
-                        <option value="">Select Medical Center</option>
-                        {shuffledItems.map((item) => {
-                          return (
-                            <option key={item.name} value={item.name}>
-                              {item.name} -{' '}
-                              {(values.tcountry === 'SA' && item.price) ||
-                                (values.tcountry === 'KW' &&
-                                  parseInt(item.price) + 1500)}
-                            </option>
-                          );
-                        })}
-                      </Field> */}
-
-                    <Select
-                      name="medicals"
-                      closeMenuOnSelect={false}
-                      components={animatedComponents}
-                      // defaultValue={[colourOptions[4], colourOptions[5]]}
-                      isMulti
-                      options={shuffledItems}
-                      onChange={(selectedOptions) => {
-                        const selectedValues = selectedOptions.map(
-                          (option) => option.value
-                        );
-
-                        setFieldValue('medicals', selectedValues);
-                        console.log(selectedValues);
-                      }}
-                      // className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
-                    />
-
-                    {/* <Button className="rounded-none py-2 !h-auto m-0">+</Button>
-                      <Button className="rounded-none py-2 !h-auto m-0">-</Button> */}
-                    {/* </div> */}
+                    <label>Visa Type</label>
+                    <Field
+                      as="select"
+                      name="visa_type"
+                      className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
+                    >
+                      <option value="">Select Visa Type</option>
+                      <option value="wv">Work Visa</option>
+                      <option value="fv">Family Visa</option>
+                    </Field>
                     <ErrorMessage
-                      name="medicals"
+                      name="visa_type"
                       component="div"
                       className="text-red-500"
                     />
                   </div>
 
                   {/* item */}
-                  {/* <div className="mt-3">
-                    <textarea
-                      name=""
-                      rows="5"
-                      className="mt-1 w-full rounded-lg border border-slate-400 py-2 text-sm"
-                    ></textarea>
-                  </div> */}
+                  <div className="mt-3">
+                    <label>Medical Center</label>
+                    <Select
+                      name="medicals"
+                      closeMenuOnSelect={true}
+                      components={animatedComponents}
+                      isMulti={false}
+                      isSearchable={true}
+                      placeholder="Search and select Medical Center"
+                      options={shuffledItems}
+                      onChange={(selectedOption) => {
+                        if (selectedOption) {
+                          setFieldValue('medicals', selectedOption.value);
+                        } else {
+                          setFieldValue('medicals', '');
+                        }
+                      }}
+                      className="mt-1"
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          border: '1px solid #94a3b8',
+                          borderRadius: '0.5rem',
+                          minHeight: '40px',
+                        }),
+                      }}
+                    />
+                    <ErrorMessage
+                      name="medicals"
+                      component="div"
+                      className="text-red-500"
+                    />
+                  </div>
 
                   {/* item */}
                   <div className="mt-3">
