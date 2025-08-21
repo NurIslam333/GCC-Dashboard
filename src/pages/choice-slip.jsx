@@ -12,6 +12,7 @@ import axios from 'axios';
 import moment from 'moment';
 import Link from 'next/link';
 import Pagination from '@/components/gcc-component/Pagination';
+import toast from 'react-hot-toast';
 
 const userChoiceSlip = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -20,6 +21,7 @@ const userChoiceSlip = () => {
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(25);
   const [normalUserSlip, setNormalUserSlip] = useState([]);
+  const [retryingSlips, setRetryingSlips] = useState(new Set());
   
   const handleFetchNormalUser = useCallback(async () => {
     try {
@@ -39,6 +41,39 @@ const userChoiceSlip = () => {
       }
     } catch (err) {}
   }, [currentPage, search, limit, activeTab]);
+
+  const handleRetrySlip = async (slipId) => {
+    try {
+      setRetryingSlips(prev => new Set(prev).add(slipId));
+      
+      const response = await axios.post(
+        `${process.env.API_URL}/retry-slip-submission`,
+        { slip_id: slipId },
+        { headers: headers }
+      );
+      
+      if (response.data.status === 'success') {
+        toast.success('Slip retry initiated successfully!');
+        // Refresh the data to show updated status
+        handleFetchNormalUser();
+      } else {
+        toast.error(response.data.message || 'Failed to retry slip');
+      }
+    } catch (error) {
+      console.error('Retry error:', error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to retry slip. Please try again.');
+      }
+    } finally {
+      setRetryingSlips(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slipId);
+        return newSet;
+      });
+    }
+  };
 
   useEffect(() => {
     handleFetchNormalUser();
@@ -74,7 +109,7 @@ const userChoiceSlip = () => {
     <>
       <NextSeo
         title="GCC Choice Slip"
-        description="Criptic - React Next Web3 NFT Crypto Dashboard Template"
+        description="GCC Choice Slip"
       />
       <div className="">
         <div className="rounded-tl-lg rounded-tr-lg bg-white px-4 pt-6 dark:bg-light-dark md:px-8 md:pt-8">
@@ -390,7 +425,7 @@ const userChoiceSlip = () => {
                               </th>
                               <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 <a href="" className="">
-                                  Slip Link
+                                  Pay Now
                                 </a>
                               </th>
                               <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
@@ -452,7 +487,7 @@ const userChoiceSlip = () => {
                                         }}
                                         className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white"
                                       >
-                                        Slip Link
+                                        Pay Now
                                       </button>
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
@@ -510,6 +545,9 @@ const userChoiceSlip = () => {
                               <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Reference
                               </th>
+                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                Actions
+                              </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
@@ -563,6 +601,15 @@ const userChoiceSlip = () => {
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.reference}
+                                    </td>
+                                    <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
+                                      <Button
+                                        onClick={() => handleRetrySlip(item.id)}
+                                        disabled={retryingSlips.has(item.id)}
+                                        className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2"
+                                      >
+                                        {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'}
+                                      </Button>
                                     </td>
                                   </tr>
                                 );
