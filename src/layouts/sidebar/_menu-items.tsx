@@ -15,7 +15,7 @@ console.log(typeof getRole);
 
 export const menuItems = [
   {
-    name: 'Dashbord',
+    name: 'Dashboard',
     icon: <HomeIcon />,
     href: routes.home,
   },
@@ -36,16 +36,16 @@ export const menuItems = [
 
 if (getRole === 'user') {
   menuItems.push(
-    {
-      name: 'Normal Slip',
-      icon: <ExchangeIcon />,
-      href: routes.userNormalSlip,
-    },
-    {
-      name: 'Night Slip',
-      icon: <ExchangeIcon />,
-      href: routes.nightSlip,
-    },
+    // {
+    //   name: 'Normal Slip',
+    //   icon: <ExchangeIcon />,
+    //   href: routes.userNormalSlip,
+    // },
+    // {
+    //   name: 'Night Slip',
+    //   icon: <ExchangeIcon />,
+    //   href: routes.nightSlip,
+    // },
 
     // {
     //   name: 'Slip Pay',

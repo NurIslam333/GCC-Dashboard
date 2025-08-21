@@ -22,6 +22,9 @@ const userChoiceSlip = () => {
   const [limit, setLimit] = useState(25);
   const [normalUserSlip, setNormalUserSlip] = useState([]);
   const [retryingSlips, setRetryingSlips] = useState(new Set());
+  const [sortField, setSortField] = useState('created_at');
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [searchTimeout, setSearchTimeout] = useState(null);
   
   const handleFetchNormalUser = useCallback(async () => {
     try {
@@ -79,6 +82,26 @@ const userChoiceSlip = () => {
     handleFetchNormalUser();
   }, [handleFetchNormalUser]);
 
+  // Debounced search effect
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when searching
+      handleFetchNormalUser();
+    }, 500); // 500ms delay
+    
+    setSearchTimeout(timeout);
+    
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [search]);
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'pending':
@@ -105,6 +128,57 @@ const userChoiceSlip = () => {
     }
   };
 
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortData = (data) => {
+    if (!data || data.length === 0) return data;
+    
+    return [...data].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+      
+      // Handle nested properties
+      if (sortField === 'name') {
+        aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
+        bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+      }
+      
+      // Handle date fields
+      if (sortField === 'created_at') {
+        aValue = new Date(aValue);
+        bValue = new Date(bValue);
+      }
+      
+      // Handle numeric fields
+      if (sortField === 'id' || sortField === 'reference') {
+        aValue = parseInt(aValue) || 0;
+        bValue = parseInt(bValue) || 0;
+      }
+      
+      if (aValue < bValue) {
+        return sortDirection === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field) {
+      return '↕️';
+    }
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
+
   return (
     <>
       <NextSeo
@@ -118,23 +192,87 @@ const userChoiceSlip = () => {
               Choice Slip
             </h2>
 
-            <div className="">
-              <Button className="mb-5 rounded-md border-0 bg-[#a855f7]">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="large-input"
+                    className="w-64 sm:text-md block rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 pl-4 pr-4 py-2"
+                    placeholder="Search by name, passport, country, city..."
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        setCurrentPage(1);
+                        handleFetchNormalUser();
+                      }
+                    }}
+                  />
+                  {search && (
+                    <button
+                      onClick={() => {
+                        setSearch('');
+                        setCurrentPage(1);
+                        handleFetchNormalUser();
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <Button
+                  onClick={() => {
+                    setCurrentPage(1);
+                    handleFetchNormalUser();
+                  }}
+                  className="rounded-md border-0 bg-blue-500 hover:bg-blue-600 transition-colors px-4 py-2"
+                >
+                  Search
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="limit-select" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Show:
+                </label>
+                <select
+                  id="limit-select"
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(parseInt(e.target.value));
+                    setCurrentPage(1); // Reset to first page when changing limit
+                  }}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={75}>75</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <Button className="rounded-md border-0 bg-[#a855f7] hover:bg-[#9333ea] transition-colors">
                 <Link href="/type-choice-slip">Type Choice Slip</Link>
               </Button>
-              <input
-                type="text"
-                id="large-input"
-                className="sm:text-md block rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
-                placeholder="Search..."
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                }}
-              />
             </div>
           </div>
 
           <div className="mt-5">
+            {/* Summary Info */}
+            <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium">Total Records:</span> {normalUserSlip.length > 0 ? totalPages * limit : 0} | 
+                <span className="font-medium ml-2">Page:</span> {currentPage} of {totalPages} | 
+                <span className="font-medium ml-2">Showing:</span> {normalUserSlip.length} per page
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium">Sort:</span> {sortField} ({sortDirection === 'asc' ? 'Ascending' : 'Descending'})
+              </div>
+            </div>
+            
             <Tab.Group>
               <Tab.List className="flex gap-4">
                 <Tab>
@@ -191,38 +329,78 @@ const userChoiceSlip = () => {
                         <table className="transaction-table w-full border-separate border-0">
                           <thead className="text-sm text-gray-500 dark:text-gray-300">
                             <tr>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                SL No
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('id')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  SL No {getSortIcon('id')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Name
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('name')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Name {getSortIcon('name')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Passport No
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('passport')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Passport No {getSortIcon('passport')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Travelling Country
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('tcountry')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Travelling Country {getSortIcon('tcountry')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                City
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('city')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  City {getSortIcon('city')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Submit Date, Time
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('created_at')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Submit Date, Time {getSortIcon('created_at')}
+                                </div>
                               </th>
                               <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Status
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('status')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Status {getSortIcon('status')}
+                                </div>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Reference
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('reference')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Reference {getSortIcon('reference')}
+                                </div>
                               </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                            {normalUserSlip.length > 0 &&
-                              normalUserSlip.map((item, i) => {
+                            {sortData(normalUserSlip).length > 0 &&
+                              sortData(normalUserSlip).map((item, i) => {
                                 return (
                                   <tr
                                     key={i}
