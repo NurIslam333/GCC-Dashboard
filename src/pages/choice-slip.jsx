@@ -6,9 +6,7 @@ import Button from '@/components/ui/button';
 import Scrollbar from '@/components/ui/scrollbar';
 import { Tab } from '@headlessui/react';
 import withAuth from '@/hook/PrivateRoute';
-import React, { useState, useEffect, useCallback } from 'react';
-import { headers } from '@/utls/auth';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import moment from 'moment';
 import Link from 'next/link';
 import Pagination from '@/components/gcc-component/Pagination';
@@ -25,73 +23,83 @@ const userChoiceSlip = () => {
   const [sortField, setSortField] = useState('created_at');
   const [sortDirection, setSortDirection] = useState('desc');
   const [searchTimeout, setSearchTimeout] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const prevSearchRef = useRef(search);
   
+  // Safety effect to ensure normalUserSlip is always an array
+  useEffect(() => {
+    if (!Array.isArray(normalUserSlip)) {
+      setNormalUserSlip([]);
+      setHasError(true);
+    }
+  }, [normalUserSlip]);
+
   const handleFetchNormalUser = useCallback(async () => {
     try {
-      const values = {
-        page: currentPage,
-        perPage: limit,
-        status: activeTab === 'all' ? 'all' : activeTab,
-        search: search,
-      };
-      const response = await axios.get(`${process.env.API_URL}/choice-slips`, {
-        headers: headers,
-        params: values,
-      });
-      if (response.data.status === 'success') {
-        setNormalUserSlip(response.data.slips.data);
-        setTotalPages(response.data.slips.last_page);
+      setIsLoading(true);
+      setHasError(false);
+      
+      const params = new URLSearchParams();
+      params.append('page', currentPage);
+      params.append('perPage', limit);
+      
+      // Only include status if it's not 'all'
+      if (activeTab !== 'all') {
+        params.append('status', activeTab);
       }
-    } catch (err) {}
+      
+      if (search) {
+        params.append('search', search);
+      }
+      
+      const response = await fetch(`/api/choice-slips?${params.toString()}`);
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.slips && data.slips.data && Array.isArray(data.slips.data)) {
+        setNormalUserSlip(data.slips.data);
+        setTotalPages(data.slips.last_page || 1);
+        setHasError(false);
+      } else {
+        setNormalUserSlip([]);
+        setTotalPages(1);
+        setHasError(true);
+        toast.error('Invalid data received from server');
+      }
+    } catch (err) {
+      setNormalUserSlip([]);
+      setTotalPages(1);
+      setHasError(true);
+      toast.error('Failed to fetch data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentPage, search, limit, activeTab]);
 
-  const handleRetrySlip = async (slipId) => {
-    try {
-      setRetryingSlips(prev => new Set(prev).add(slipId));
-      
-      const response = await axios.post(
-        `${process.env.API_URL}/retry-slip-submission`,
-        { slip_id: slipId },
-        { headers: headers }
-      );
-      
-      if (response.data.status === 'success') {
-        toast.success('Slip retry initiated successfully!');
-        // Refresh the data to show updated status
-        handleFetchNormalUser();
-      } else {
-        toast.error(response.data.message || 'Failed to retry slip');
-      }
-    } catch (error) {
-      console.error('Retry error:', error);
-      if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Failed to retry slip. Please try again.');
-      }
-    } finally {
-      setRetryingSlips(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(slipId);
-        return newSet;
-      });
-    }
-  };
-
+  // Initial data fetch when component mounts
   useEffect(() => {
     handleFetchNormalUser();
-  }, [handleFetchNormalUser]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Debounced search effect
   useEffect(() => {
+    // Clear any existing search timeout
     if (searchTimeout) {
       clearTimeout(searchTimeout);
     }
     
+    // Create a new timeout for search debouncing
     const timeout = setTimeout(() => {
-      setCurrentPage(1); // Reset to first page when searching
+      // Reset to first page when searching
+      if (search !== prevSearchRef.current) {
+        setCurrentPage(1);
+      }
+      
       handleFetchNormalUser();
-    }, 500); // 500ms delay
+      
+      // Update the ref to track the current search value
+      prevSearchRef.current = search;
+    }, search ? 500 : 0); // 500ms delay for search, no delay for other changes
     
     setSearchTimeout(timeout);
     
@@ -100,7 +108,42 @@ const userChoiceSlip = () => {
         clearTimeout(timeout);
       }
     };
-  }, [search]);
+  }, [activeTab, currentPage, search, limit]); // Only depend on the actual values, not the function
+  
+  // Note: handleFetchNormalUser is not included in dependencies to prevent infinite loops
+  // The function is stable due to useCallback with proper dependencies
+
+  const handleRetrySlip = async (slipId) => {
+    try {
+      setRetryingSlips(prev => new Set(prev).add(slipId));
+      
+      const response = await fetch('/api/retry-slip-submission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slip_id: slipId }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        toast.success('Slip retry initiated successfully!');
+        // Refresh the data to show updated status
+        handleFetchNormalUser();
+      } else {
+        toast.error(data.message || 'Failed to retry slip');
+      }
+    } catch (error) {
+        toast.error('Failed to retry slip. Please try again.');
+    } finally {
+      setRetryingSlips(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slipId);
+        return newSet;
+      });
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -138,22 +181,30 @@ const userChoiceSlip = () => {
   };
 
   const sortData = (data) => {
-    if (!data || data.length === 0) return data;
+    // Safety check - ensure data is valid
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
     
     return [...data].sort((a, b) => {
+      // Additional safety check for items
+      if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+        return 0;
+      }
+      
       let aValue = a[sortField];
       let bValue = b[sortField];
       
       // Handle nested properties
       if (sortField === 'name') {
-        aValue = `${a.first_name} ${a.last_name}`.toLowerCase();
-        bValue = `${b.first_name} ${b.last_name}`.toLowerCase();
+        aValue = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase();
+        bValue = `${b.first_name || ''} ${b.last_name || ''}`.toLowerCase();
       }
       
       // Handle date fields
       if (sortField === 'created_at') {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
+        aValue = new Date(aValue || 0);
+        bValue = new Date(bValue || 0);
       }
       
       // Handle numeric fields
@@ -264,62 +315,89 @@ const userChoiceSlip = () => {
             {/* Summary Info */}
             <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Total Records:</span> {normalUserSlip.length > 0 ? totalPages * limit : 0} | 
+                <span className="font-medium">Total Records:</span> {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? totalPages * limit : 0} | 
                 <span className="font-medium ml-2">Page:</span> {currentPage} of {totalPages} | 
-                <span className="font-medium ml-2">Showing:</span> {normalUserSlip.length} per page
+                <span className="font-medium ml-2">Showing:</span> {Array.isArray(normalUserSlip) ? normalUserSlip.length : 0} per page
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Sort:</span> {sortField} ({sortDirection === 'asc' ? 'Ascending' : 'Descending'})
               </div>
             </div>
             
+            {/* Safety check - ensure normalUserSlip is always an array */}
+            {hasError && (
+              <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900 dark:text-red-200">
+                <p className="font-medium">Data Error</p>
+                <p>Invalid data received. Please refresh the page or try again.</p>
+                <div className="mt-2 text-sm">
+                  <p><strong>Data Type:</strong> {typeof normalUserSlip}</p>
+                  <p><strong>Data Value:</strong> {JSON.stringify(normalUserSlip, null, 2)}</p>
+                </div>
+                <button 
+                  onClick={handleFetchNormalUser}
+                  className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            
+            {/* Loading indicator */}
+            {isLoading && (
+              <div className="mb-4 rounded-lg bg-blue-50 p-4 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <p>Loading data...</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Only render tabs if we have valid data and not loading */}
+            {!isLoading && Array.isArray(normalUserSlip) && (
+              <>
+                {/* Tab buttons - always show regardless of data */}
             <Tab.Group>
               <Tab.List className="flex gap-4">
-                <Tab>
-                  <Button
-                    className={cn('rounded-md border-0', {
-                      '!bg-blue-500': activeTab === 'all',
-                      'bg-gray-200': activeTab !== 'all',
+                    <Tab 
+                      className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
+                        '!bg-blue-500 text-white': activeTab === 'all',
+                        'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'all',
                     })}
                     onClick={() => setActiveTab('all')}
                   >
                     All
-                  </Button>
                 </Tab>
-                <Tab>
-                  <Button
-                    className={cn('rounded-md border-0', {
-                      '!bg-yellow-500': activeTab === 'pending',
-                      'bg-gray-200': activeTab !== 'pending',
+                    <Tab 
+                      className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
+                        '!bg-yellow-500 text-white': activeTab === 'pending',
+                        'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'pending',
                     })}
                     onClick={() => setActiveTab('pending')}
                   >
                     Pending
-                  </Button>
                 </Tab>
-                <Tab>
-                  <Button
-                    className={cn('rounded-md border-0', {
-                      '!bg-green-500': activeTab === 'complete',
-                      'bg-gray-200': activeTab !== 'complete',
+                    <Tab 
+                      className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
+                        '!bg-green-500 text-white': activeTab === 'complete',
+                        'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'complete',
                     })}
                     onClick={() => setActiveTab('complete')}
                   >
                     Complete
-                  </Button>
                 </Tab>
-                <Tab>
-                  <Button
-                    className={cn('rounded-md border-0', {
-                      '!bg-red-500': activeTab === 'failed',
-                      'bg-gray-200': activeTab !== 'failed',
+                    <Tab 
+                      className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
+                        '!bg-red-500 text-white': activeTab === 'failed',
+                        'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'failed',
                     })}
                     onClick={() => setActiveTab('failed')}
                   >
                     Failed
-                  </Button>
                 </Tab>
               </Tab.List>
+                  
+                  {/* Tab content - only show when there's data */}
+                  {normalUserSlip.length > 0 ? (
               <Tab.Panels>
                 {/* All */}
                 <Tab.Panel>
@@ -381,7 +459,7 @@ const userChoiceSlip = () => {
                                 Choice Center
                               </th>
                               <th 
-                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                      className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
                                 onClick={() => handleSort('status')}
                               >
                                 <div className="flex items-center justify-between">
@@ -389,18 +467,26 @@ const userChoiceSlip = () => {
                                 </div>
                               </th>
                               <th 
-                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                      className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
                                 onClick={() => handleSort('reference')}
                               >
                                 <div className="flex items-center justify-between">
                                   Reference {getSortIcon('reference')}
                                 </div>
                               </th>
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                      Actions
+                                    </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                            {sortData(normalUserSlip).length > 0 &&
+                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
                               sortData(normalUserSlip).map((item, i) => {
+                                      // Additional safety check for item
+                                      if (!item || typeof item !== 'object') {
+                                        return null;
+                                      }
+                                      
                                 return (
                                   <tr
                                     key={i}
@@ -450,6 +536,20 @@ const userChoiceSlip = () => {
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.reference}
                                     </td>
+                                          <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
+                                            {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
+                                              <button
+                                                onClick={() => {
+                                                  window.open(item.slip_url, '_blank');
+                                                }}
+                                                className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                              >
+                                                Pay Now
+                                              </button>
+                                            ) : (
+                                              <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                          </td>
                                   </tr>
                                 );
                               })}
@@ -475,38 +575,46 @@ const userChoiceSlip = () => {
                         <table className="transaction-table w-full border-separate border-0">
                           <thead className="text-sm text-gray-500 dark:text-gray-300">
                             <tr>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 SL No
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Name
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Passport No
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Travelling Country
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 City
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Submit Date, Time
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                Completed Date, Time
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Status
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Reference
                               </th>
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                      Actions
+                                    </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                            {normalUserSlip.length > 0 &&
+                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
                               normalUserSlip.map((item, i) => {
+                                      // Additional safety check for item
+                                      if (!item || typeof item !== 'object') {
+                                        return null;
+                                      }
+                                      
                                 return (
                                   <tr
                                     key={i}
@@ -528,9 +636,9 @@ const userChoiceSlip = () => {
                                       {item.city}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {moment(item?.created_at).format('DD/MM/YYYY')}
+                                      {moment(item?.completed_at).format('DD/MM/YYYY')}
                                       <br />
-                                      {moment(item?.created_at).format('hh:mm A')}
+                                      {moment(item?.completed_at).format('hh:mm A')}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.medical_list?.map((item, i, array) => (
@@ -556,6 +664,20 @@ const userChoiceSlip = () => {
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.reference}
                                     </td>
+                                          <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
+                                            {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
+                                              <button
+                                                onClick={() => {
+                                                  window.open(item.slip_url, '_blank');
+                                                }}
+                                                className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                              >
+                                                Pay Now
+                                              </button>
+                                            ) : (
+                                              <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                          </td>
                                   </tr>
                                 );
                               })}
@@ -581,39 +703,44 @@ const userChoiceSlip = () => {
                         <table className="transaction-table w-full border-separate border-0">
                           <thead className="text-sm text-gray-500 dark:text-gray-300">
                             <tr>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 SL No
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Name
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 <p>Passport No,</p>
                                 <p>Travelling Country,</p>
                                 <p>City</p>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Submit Date, Time
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Status
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 <a href="" className="">
                                   Pay Now
                                 </a>
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Reference
                               </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                            {normalUserSlip.length > 0 &&
+                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
                               normalUserSlip.map((item, i) => {
+                                      // Additional safety check for item
+                                      if (!item || typeof item !== 'object') {
+                                        return null;
+                                      }
+                                      
                                 return (
                                   <tr
                                     key={i}
@@ -659,14 +786,18 @@ const userChoiceSlip = () => {
                                       </h5>
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
+                                            {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
                                       <button
                                         onClick={() => {
                                           window.open(item.slip_url, '_blank');
                                         }}
-                                        className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white"
+                                                className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
                                       >
                                         Pay Now
                                       </button>
+                                            ) : (
+                                              <span className="text-gray-400 text-xs">-</span>
+                                            )}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.reference}
@@ -696,41 +827,46 @@ const userChoiceSlip = () => {
                         <table className="transaction-table w-full border-separate border-0">
                           <thead className="text-sm text-gray-500 dark:text-gray-300">
                             <tr>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 SL No
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Name
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Passport No
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Travelling Country
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 City
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Submit Date, Time
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Status
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Reference
                               </th>
-                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Actions
                               </th>
                             </tr>
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                            {normalUserSlip.length > 0 &&
+                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
                               normalUserSlip.map((item, i) => {
+                                      // Additional safety check for item
+                                      if (!item || typeof item !== 'object') {
+                                        return null;
+                                      }
+                                      
                                 return (
                                   <tr
                                     key={i}
@@ -806,7 +942,16 @@ const userChoiceSlip = () => {
                   </div>
                 </Tab.Panel>
               </Tab.Panels>
+                  ) : (
+                    // Show message when no data in tab content area
+                    <div className="mt-4 rounded-lg bg-gray-50 p-8 text-center text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                      <p className="text-lg font-medium mb-2">No data available for this tab</p>
+                      <p className="text-sm">Try switching to a different tab or adjusting your search criteria.</p>
+                    </div>
+                  )}
             </Tab.Group>
+              </>
+            )}
           </div>
         </div>
       </div>

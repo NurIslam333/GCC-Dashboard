@@ -1,9 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 import withAuth from '@/hook/PrivateRoute';
 import Cookies from 'js-cookie';
-import axios from 'axios';
 import { useState, useCallback, useEffect } from 'react';
-import { headers } from '@/utls/auth';
 import { textFormate } from '@/utls/capitalized';
 import toast from 'react-hot-toast';
 import FilterSelector from '@/components/KsaSlip/FilterSelector';
@@ -55,13 +53,10 @@ const HomePage = () => {
           }
         }
    
-
-        const response = await axios.get(`${process.env.API_URL}/stats`, {
-          headers: headers,
-          params: params,
-        });
-        if (response.data.status === 'success') {
-          setNormalUserSlip(response.data.statistics);
+        const response = await fetch(`/api/stats?role=user&${new URLSearchParams(params)}`);
+        const data = await response.json();
+        if (data.status === 'success') {
+          setNormalUserSlip(data.statistics);
         }
       }
     } catch (err) {}
@@ -113,12 +108,10 @@ const HomePage = () => {
         }
       }
       if (getRole !== 'user') {
-        const response = await axios.get(`${process.env.API_URL}/admin/stats`, {
-          headers: headers,
-          params: params,
-        });
-        if (response.data.status === 'success') {
-          setAdminUserSlip(response.data.statistics);
+        const response = await fetch(`/api/stats?role=admin&${new URLSearchParams(params)}`);
+        const data = await response.json();
+        if (data.status === 'success') {
+          setAdminUserSlip(data.statistics);
         }
       }
     } catch (err) {}
