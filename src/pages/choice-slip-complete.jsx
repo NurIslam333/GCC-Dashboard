@@ -89,7 +89,7 @@ const choiceSlipComplete = () => {
                     </th>
 
                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                      Submit Date, Time
+                      Completed Date, Time
                     </th>
 
                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
@@ -131,9 +131,9 @@ const choiceSlipComplete = () => {
                             <p>{item?.city}</p>
                           </td>
                           <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                            {moment(item?.created_at).format('DD/MM/YYYY')}
+                            {moment(item?.completed_at).format('DD/MM/YYYY')}
                             <br />
-                            {moment(item?.created_at).format('hh:mm A')}
+                            {moment(item?.completed_at).format('hh:mm A')}
                           </td>
                           <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                             {item?.medical_list?.map((item, i, array) => (
