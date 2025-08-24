@@ -106,7 +106,7 @@ const userChoiceSlip = () => {
             headers: headers,
           }
         );
-        console.log(response);
+
         if (response) {
           const successMessage = response?.data?.message.success[0];
           toast.success(successMessage);

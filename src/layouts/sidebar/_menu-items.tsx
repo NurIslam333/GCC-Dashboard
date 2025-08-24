@@ -11,7 +11,6 @@ import { CompassIcon } from '@/components/icons/compass';
 import Cookies from 'js-cookie';
 
 const getRole = Cookies.get('role');
-console.log(typeof getRole);
 
 export const menuItems = [
   {

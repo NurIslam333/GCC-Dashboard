@@ -33,7 +33,7 @@ const TypeNormalSlip = () => {
         });
       }
 
-      console.log('Form submitted:', values);
+
       setSubmitting(false);
     } catch (error) {
       if (error.response) {

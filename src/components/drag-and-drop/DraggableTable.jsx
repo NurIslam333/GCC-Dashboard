@@ -30,7 +30,7 @@ const DraggableTable = ({ data, moveRow }) => {
         ...row,
         order: index + 1, // Assuming you have an "order" property in your objects
       }));
-      console.log("orderedData",orderedData)
+
 
       try {
         // Save the ordered data to the API

@@ -61,14 +61,11 @@ const typeNormalSlip = () => {
         // console.log('Error submitting form:', response.data.message.error);
       }
 
-      console.log('Form submitted:', values);
+
       setSubmitting(false);
     } catch (error) {
       if (error.response) {
-        console.log(
-          'Error submitting form:',
-          error.response.data.message.error[0]
-        );
+
         Object.keys(error?.response?.data?.message).forEach((key) => {
           const errorMessage = error?.response?.data?.msg[key][0];
           toast.error(errorMessage);

@@ -55,7 +55,7 @@ const normalSlipPending = () => {
         }
       );
 
-      console.log(response.data);
+
       if (response.data.status === 'success') {
         toast.success('Payment page  redriect   Successfully !');
         router.push('/payment');
@@ -69,10 +69,7 @@ const normalSlipPending = () => {
       }
     } catch (error) {
       if (error.response) {
-        console.log(
-          'Error submitting form:',
-          error?.response?.data?.message.error
-        );
+
         Object.keys(error?.response?.data?.message.error).forEach((key) => {
           const errorMessage = error?.response?.data?.message.error[key][0];
           toast.error(errorMessage);

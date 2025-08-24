@@ -34,7 +34,7 @@ function Uploader() {
     files.forEach((file: any) => URL.revokeObjectURL(file.preview));
   }, [files]);
 
-  console.log(files);
+
 
   return (
     <div className="rounded-lg border border-solid border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-light-dark sm:p-6">

@@ -46,7 +46,7 @@ const SubmissionForm = () => {
         initialValues.expiry_month = filteredData[0].expiry_month
         initialValues.expiry_year = filteredData[0].expiry_year
         initialValues.card_security_code = filteredData[0].card_security_code
-        console.log(filteredData)
+
       }
     } 
 
@@ -82,14 +82,11 @@ const SubmissionForm = () => {
           // console.log('Error submitting form:', response.data.message.error);
         }
   
-        console.log('Form submitted:', values);
+
         setSubmitting(false);
       } catch (error) {
         if (error.response) {
-          console.log(
-            'Error submitting form:',
-            error?.response?.data?.message.error
-          );
+
           Object.keys(error?.response?.data?.message.error).forEach((key) => {
             const errorMessage = error?.response?.data?.message.error[key][0];
             toast.error(errorMessage);

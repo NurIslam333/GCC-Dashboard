@@ -225,7 +225,7 @@ export function Filters() {
         <PriceRange />
       </Collapse>
       <Collapse label="Collection" initialOpen>
-        <CollectionSelect onSelect={(value) => console.log(value)} />
+        <CollectionSelect onSelect={(value) => {}} />
       </Collapse>
     </>
   );

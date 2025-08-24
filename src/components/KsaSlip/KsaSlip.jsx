@@ -37,7 +37,6 @@ const KsaSlip = ({
           ],
         });
         const movedCard = prevCards[dragIndex];
-        console.log('movedCard', movedCard);
         updateCardIndex(
           movedCard.slot_id,
           movedCard.id,
@@ -423,7 +422,6 @@ const KsaSlip = ({
     };
 
     const handleRowCheckboxChange = (event, id) => {
-      console.log(event.target.checked, id);
       if (event.target.checked) {
         setSelectedItems((prevSelectedItems) => [...prevSelectedItems, id]);
       } else {
@@ -440,7 +438,7 @@ const KsaSlip = ({
           card_no: card_no,
           slip_url_id: slip_url_id,
         };
-        console.log('Submitting OTP:', values);
+
         // Make the API request
         const response = await axios.post(
           `${process.env.API_URL}/admin/process-otp/${id}`,
@@ -466,7 +464,7 @@ const KsaSlip = ({
       if (e.key === 'Enter') {
         e.preventDefault();
         const otp = e.target.value;
-        console.log( card_no + ' ' + id + ' ' + slip_url_id);
+
         
        
         await handleSubmit(otp, card_no, id, slip_url_id);

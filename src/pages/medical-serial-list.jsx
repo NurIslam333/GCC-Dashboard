@@ -206,12 +206,9 @@ const medicalSerialList = () => {
                           </thead>
                           <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
                             {/* item */}
-                            {normalUserSlip?.map((data, i) => {
-                              console.log('KUmilla ', data.ksa_price);
-                              return (
+                            {normalUserSlip?.map((data, i) => (
                                <MedicalList key={`slip-comilla${data?.serial}`} data={data} handlePriceUpdate={handlePriceUpdate}/>
-                              );
-                            })}
+                            ))}
                           </tbody>
                         </table>
                       </div>
