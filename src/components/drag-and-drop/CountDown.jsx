@@ -44,7 +44,7 @@ const CountDown = ({time}) => {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [calculateTimeRemaining]);
 
   return (
     <>
