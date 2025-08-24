@@ -76,7 +76,7 @@ const TypeNormalSlip = () => {
                     <option value="">Select your City</option>
                     <option value="2031">Barishal</option>
                     <option value="81">Chitagong</option>
-                    <option value="2033">Cox's Bazar</option>
+                    <option value="2033">Cox&apos;s Bazar</option>
                     <option value="2032">Comilla</option>
                     <option value="80">Dhaka</option>
                     <option value="2030">Rajshahi</option>

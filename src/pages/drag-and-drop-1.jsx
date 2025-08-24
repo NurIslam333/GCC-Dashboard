@@ -52,7 +52,7 @@ const style = {
   
         return updatedCards;
       });
-    }, []);
+    }, [updateCardIndex]);
   
     const updateCardIndex = async (cardId, newIndex) => {
       try {
