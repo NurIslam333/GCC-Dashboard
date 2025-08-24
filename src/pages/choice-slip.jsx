@@ -56,10 +56,24 @@ const userChoiceSlip = () => {
       const response = await fetch(`/api/choice-slips?${params.toString()}`);
       const data = await response.json();
       
+      // Debug logging
+      console.log('API Response:', data);
+      console.log('Active Tab:', activeTab);
+      console.log('Slips Data:', data.slips?.data);
+      
       if (data.status === 'success' && data.slips && data.slips.data && Array.isArray(data.slips.data)) {
         setNormalUserSlip(data.slips.data);
         setTotalPages(data.slips.last_page || 1);
         setHasError(false);
+        
+        // Debug: Log the first few items to see their status
+        if (data.slips.data.length > 0) {
+          console.log('First 3 items:', data.slips.data.slice(0, 3).map(item => ({
+            id: item.id,
+            status: item.status,
+            name: `${item.first_name} ${item.last_name}`
+          })));
+        }
       } else {
         setNormalUserSlip([]);
         setTotalPages(1);
@@ -67,6 +81,7 @@ const userChoiceSlip = () => {
         toast.error('Invalid data received from server');
       }
     } catch (err) {
+      console.error('API Error:', err);
       setNormalUserSlip([]);
       setTotalPages(1);
       setHasError(true);
@@ -352,6 +367,8 @@ const userChoiceSlip = () => {
               </div>
             )}
             
+            
+            
             {/* Only render tabs if we have valid data and not loading */}
             {!isLoading && Array.isArray(normalUserSlip) && (
               <>
@@ -537,18 +554,27 @@ const userChoiceSlip = () => {
                                       {item?.reference}
                                     </td>
                                           <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                            {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
-                                              <button
-                                                onClick={() => {
-                                                  window.open(item.slip_url, '_blank');
-                                                }}
-                                                className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                            <div className="flex flex-col gap-2">
+                                              {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
+                                                <button
+                                                  onClick={() => {
+                                                    window.open(item.slip_url, '_blank');
+                                                  }}
+                                                  className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                                >
+                                                  Pay Now
+                                                </button>
+                                              ) : null}
+                                              {/* Debug: Status is {item?.status} */}
+                                              {/* Temporarily show Retry button for all items to debug */}
+                                              <Button
+                                                onClick={() => handleRetrySlip(item.id)}
+                                                disabled={retryingSlips.has(item.id)}
+                                                className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
                                               >
-                                                Pay Now
-                                              </button>
-                                            ) : (
-                                              <span className="text-gray-400 text-xs">-</span>
-                                            )}
+                                                {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'} ({item?.status})
+                                              </Button>
+                                            </div>
                                           </td>
                                   </tr>
                                 );
@@ -665,18 +691,27 @@ const userChoiceSlip = () => {
                                       {item?.reference}
                                     </td>
                                           <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                            {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
-                                              <button
-                                                onClick={() => {
-                                                  window.open(item.slip_url, '_blank');
-                                                }}
-                                                className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                            <div className="flex flex-col gap-2">
+                                              {item?.status?.toLowerCase() === 'complete' && item?.slip_url ? (
+                                                <button
+                                                  onClick={() => {
+                                                    window.open(item.slip_url, '_blank');
+                                                  }}
+                                                  className="block w-[100px] rounded-sm bg-orange-400 p-2 text-center text-white hover:bg-orange-500 transition-colors"
+                                                >
+                                                  Pay Now
+                                                </button>
+                                              ) : null}
+                                              {/* Debug: Status is {item?.status} */}
+                                              {/* Temporarily show Retry button for all items to debug */}
+                                              <Button
+                                                onClick={() => handleRetrySlip(item.id)}
+                                                disabled={retryingSlips.has(item.id)}
+                                                className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
                                               >
-                                                Pay Now
-                                              </button>
-                                            ) : (
-                                              <span className="text-gray-400 text-xs">-</span>
-                                            )}
+                                                {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'} ({item?.status})
+                                              </Button>
+                                            </div>
                                           </td>
                                   </tr>
                                 );
