@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 const CountDown = ({time}) => {
-  const targetDate = new Date(time);
+  const targetDate = useMemo(() => new Date(time), [time]);
   const countdownTime = 1 * 60 * 60 + 59 * 60; // 1 hour and 59 minutes in seconds
 
   const [timerHours, setTimerHours] = useState("00");

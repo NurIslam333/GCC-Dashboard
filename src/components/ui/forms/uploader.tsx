@@ -6,7 +6,9 @@ import Button from '@/components/ui/button';
 function Uploader() {
   const [files, setFiles] = useState([]);
   const { getRootProps, getInputProps } = useDropzone({
-    accept: 'image/*',
+    accept: {
+      'image/*': []
+    },
     multiple: false,
     onDrop: (acceptedFiles: any) => {
       setFiles(
