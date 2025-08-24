@@ -24,10 +24,10 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
             await connectToWallet();
           }
         } else {
-          console.log('window or window.ethereum is not available');
+          
         }
       } catch (error) {
-        console.log(error, 'Catch error Account is not connected');
+        
       }
     }
     checkConnection();
@@ -43,9 +43,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
         getBalance(provider, web3Address);
       }
     } catch (error) {
-      console.log(
-        'Account not connected; logged from setWalletAddress function'
-      );
+      
     }
   };
 
@@ -82,10 +80,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      console.log(
-        error,
-        'got this error on connectToWallet catch block while connecting the wallet'
-      );
+      
     }
   };
 

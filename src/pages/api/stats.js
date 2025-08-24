@@ -35,16 +35,14 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json',
     };
 
-    console.log('Making request to:', fullUrl);
-    console.log('With headers:', { ...requestHeaders, Authorization: 'Bearer [HIDDEN]' });
+
 
     const response = await fetch(fullUrl, {
       method: 'GET',
       headers: requestHeaders,
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
 
     if (!response.ok) {
       const errorText = await response.text();

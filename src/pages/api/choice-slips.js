@@ -37,12 +37,7 @@ export default async function handler(req, res) {
       'Content-Type': 'application/json',
     };
 
-    console.log('=== Choice Slips API Debug ===');
-    console.log('Original query params:', { page, perPage, status, search });
-    console.log('Mapped API params:', params);
-    console.log('Making request to:', fullUrl);
-    console.log('Token present:', !!token);
-    console.log('================================');
+
 
     // Handle status parameter - external API requires it
     if (status) {
@@ -63,26 +58,14 @@ export default async function handler(req, res) {
       const queryString = new URLSearchParams(params).toString();
       const fullUrl = `${apiUrl}?${queryString}`;
       
-      console.log('=== Specific Status API Call ===');
-      console.log('Original status:', status);
-      console.log('Mapped status:', mappedStatus);
-      console.log('Final params:', params);
-      console.log('Making request to:', fullUrl);
-      console.log('Request headers:', requestHeaders);
-      console.log('External API URL:', apiUrl);
-      console.log('================================');
-      
-      // Test if the external API accepts the request
-      console.log('Testing external API with params:', params);
+
       
       const response = await fetch(fullUrl, {
         method: 'GET',
         headers: requestHeaders,
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -97,7 +80,6 @@ export default async function handler(req, res) {
         
         // Try alternative status parameter names if the first attempt fails
         if (response.status === 400 || response.status === 422) {
-          console.log('Trying alternative status parameter names...');
           
           // Try different parameter names that external APIs commonly use
           const alternativeParams = { ...params };
@@ -108,21 +90,18 @@ export default async function handler(req, res) {
           const altQueryString = new URLSearchParams(alternativeParams).toString();
           const altUrl = `${apiUrl}?${altQueryString}`;
           
-          console.log('Trying with "state" parameter:', altUrl);
-          
           const altResponse = await fetch(altUrl, {
             method: 'GET',
             headers: requestHeaders,
           });
           
           if (altResponse.ok) {
-            console.log('Alternative parameter "state" worked!');
             const altData = await altResponse.json();
             if (altData.status === 'success') {
               return res.status(200).json(altData);
             }
           } else {
-            console.log('Alternative parameter "state" also failed');
+            
           }
           
           // Try 'type' instead of 'status'
@@ -131,21 +110,18 @@ export default async function handler(req, res) {
           const altQueryString2 = new URLSearchParams(alternativeParams).toString();
           const altUrl2 = `${apiUrl}?${altQueryString2}`;
           
-          console.log('Trying with "type" parameter:', altUrl2);
-          
           const altResponse2 = await fetch(altUrl2, {
             method: 'GET',
             headers: requestHeaders,
           });
           
           if (altResponse2.ok) {
-            console.log('Alternative parameter "type" worked!');
             const altData2 = await altResponse2.json();
             if (altData2.status === 'success') {
               return res.status(200).json(altData2);
             }
           } else {
-            console.log('Alternative parameter "type" also failed');
+            
           }
         }
         
@@ -197,14 +173,11 @@ export default async function handler(req, res) {
     } else {
       // If no status is provided (e.g., "all" tab), we need to handle this
       // Make multiple API calls to get all statuses and combine results
-      console.log('No status provided, fetching data for all statuses');
       
       try {
         const allStatuses = ['pending', 'complete', 'failed'];
         const allResults = [];
         let totalPages = 0;
-        
-        console.log('Starting to fetch data for statuses:', allStatuses);
         
         // Fetch data for each status
         for (const statusType of allStatuses) {
@@ -214,22 +187,13 @@ export default async function handler(req, res) {
           const statusQueryString = new URLSearchParams(statusParams).toString();
           const statusUrl = `${apiUrl}?${statusQueryString}`;
           
-          console.log(`Fetching ${statusType} data from:`, statusUrl);
-          
           const statusResponse = await fetch(statusUrl, {
             method: 'GET',
             headers: requestHeaders,
           });
           
-          console.log(`${statusType} response status:`, statusResponse.status);
-          
           if (statusResponse.ok) {
             const statusData = await statusResponse.json();
-            console.log(`${statusType} data received:`, {
-              status: statusData.status,
-              hasSlips: !!statusData.slips,
-              dataLength: statusData.slips?.data?.length || 0
-            });
             
             if (statusData.status === 'success' && statusData.slips && statusData.slips.data) {
               allResults.push(...statusData.slips.data);
@@ -237,28 +201,16 @@ export default async function handler(req, res) {
               if (statusData.slips.last_page > totalPages) {
                 totalPages = statusData.slips.last_page;
               }
-              console.log(`Added ${statusData.slips.data.length} ${statusType} items. Total so far: ${allResults.length}`);
             }
           } else {
             console.error(`Failed to fetch ${statusType} data:`, statusResponse.status);
           }
         }
         
-        console.log('All statuses fetched. Total results:', allResults.length);
-        
         // Combine and paginate results
         const startIndex = (parseInt(page) - 1) * parseInt(perPage);
         const endIndex = startIndex + parseInt(perPage);
         const paginatedResults = allResults.slice(startIndex, endIndex);
-        
-        console.log('Pagination:', {
-          page: parseInt(page),
-          perPage: parseInt(perPage),
-          startIndex,
-          endIndex,
-          paginatedLength: paginatedResults.length,
-          totalPages: Math.ceil(allResults.length / parseInt(perPage))
-        });
         
         // Return combined results
         return res.status(200).json({

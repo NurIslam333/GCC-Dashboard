@@ -14,13 +14,13 @@ const KuetSlip = () => {
     // Function to handle API call for Ready for Payment
     const handleReadyForPayment = () => {
       // Implement your API call logic here for "Ready for Payment"
-      console.log('Ready for Payment API call:', selectedItems);
+      
     };
   
     // Function to handle API call for Complete
     const handleComplete = () => {
       // Implement your API call logic here for "Complete"
-      console.log('Complete API call:', selectedItems);
+      
     };
 
   const handleHeaderCheckboxChange = (event) => {
@@ -46,7 +46,7 @@ const KuetSlip = () => {
     }
   };
 
-  console.log(`Setting`, selectedItems)
+
   return (
     <div className="py-5">
       <h2 className="mb-3 shrink-0 pb-5 text-lg font-medium uppercase text-black dark:text-white sm:text-xl md:mb-0 md:text-2xl">

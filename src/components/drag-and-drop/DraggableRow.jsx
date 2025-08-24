@@ -7,7 +7,7 @@ const DraggableRow = ({ item, index, moveRow }) => {
     type: 'ROW',
     item: { index },
   });
-  console.log('sdsd', item);
+
   return (
     <tr ref={drag}>
       {/* {item.map((cell, cellIndex) => (

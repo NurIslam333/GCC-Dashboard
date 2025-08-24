@@ -56,7 +56,7 @@ const style = {
   
     const updateCardIndex = async (cardId, newIndex) => {
       try {
-        console.log(cardId, newIndex);
+
         // Make your API call to update the card index
         // const response = await fetch(`/api/cards/${cardId}/update-index`, {
         //   method: 'PUT',

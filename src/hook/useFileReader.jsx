@@ -6,7 +6,7 @@ function useImageReader(allowedTypes) {
   const [selectIndex, setSelectIndex] = useState(null);
 
   const handleImageChange = (e, index) => {
-    console.log("index",e. index)
+
     const file = e.target.files?.[0];
     if (file && allowedTypes.includes(file?.type)) {
       const reader = new FileReader();

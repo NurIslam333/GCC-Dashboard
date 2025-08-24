@@ -84,14 +84,11 @@ const typeChoicSlip = () => {
         // console.log('Error submitting form:', data.message.error);
       }
 
-      console.log('Form submitted:', values);
+
       setSubmitting(false);
     } catch (error) {
       if (error.response) {
-        console.log(
-          'Error submitting form:',
-          error?.response?.data?.message.error
-        );
+
         Object.keys(error?.response?.data?.message.error).forEach((key) => {
           const errorMessage = error?.response?.data?.message.error[key][0];
           toast.error(errorMessage);

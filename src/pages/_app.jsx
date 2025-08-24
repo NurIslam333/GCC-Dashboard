@@ -140,7 +140,6 @@ function CustomApp({ Component, pageProps }) {
     const channel = pusher?.subscribe(channelName);
 
     const handlePaymentUpdate = (data) => {
-      console.log('Received event:', data);
 
       let pay_slip_id = data.id || null,
         event_type = data.type,
@@ -634,7 +633,6 @@ function CustomApp({ Component, pageProps }) {
     };
 
     const handleLinkUpdate = (data) => {
-      console.log('Received event:', data);
 
       let link_slip_id = data.id || null,
         event_type = data.type,
