@@ -26,6 +26,10 @@ const routes = {
   linkPayment: '/link-payment',
   linkPaymentComplete: '/link-payment-complet',
   farms: '/farms',
+  swap: '/swap',
+  liquidity: '/liquidity',
+  vote: '/vote',
+  charts: '/charts',
   // slip-pay-s: '/choice-slip-pay',
 };
 

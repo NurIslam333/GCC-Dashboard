@@ -16,7 +16,7 @@ export default function Sidebar({ className }: { className?: string }) {
   const { closeDrawer } = useDrawer();
 
   const getUser :any =Cookies.get('user');
-  let user = "";
+  let user: any = null;
 
   if (getUser) {
     try {
