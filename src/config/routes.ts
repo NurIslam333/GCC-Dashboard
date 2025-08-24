@@ -25,6 +25,7 @@ const routes = {
   nightSlip: '/night-slip',
   linkPayment: '/link-payment',
   linkPaymentComplete: '/link-payment-complet',
+  farms: '/farms',
   // slip-pay-s: '/choice-slip-pay',
 };
 
