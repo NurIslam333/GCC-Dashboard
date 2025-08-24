@@ -56,24 +56,10 @@ const userChoiceSlip = () => {
       const response = await fetch(`/api/choice-slips?${params.toString()}`);
       const data = await response.json();
       
-      // Debug logging
-      console.log('API Response:', data);
-      console.log('Active Tab:', activeTab);
-      console.log('Slips Data:', data.slips?.data);
-      
       if (data.status === 'success' && data.slips && data.slips.data && Array.isArray(data.slips.data)) {
         setNormalUserSlip(data.slips.data);
         setTotalPages(data.slips.last_page || 1);
         setHasError(false);
-        
-        // Debug: Log the first few items to see their status
-        if (data.slips.data.length > 0) {
-          console.log('First 3 items:', data.slips.data.slice(0, 3).map(item => ({
-            id: item.id,
-            status: item.status,
-            name: `${item.first_name} ${item.last_name}`
-          })));
-        }
       } else {
         setNormalUserSlip([]);
         setTotalPages(1);
@@ -81,7 +67,6 @@ const userChoiceSlip = () => {
         toast.error('Invalid data received from server');
       }
     } catch (err) {
-      console.error('API Error:', err);
       setNormalUserSlip([]);
       setTotalPages(1);
       setHasError(true);
@@ -565,15 +550,15 @@ const userChoiceSlip = () => {
                                                   Pay Now
                                                 </button>
                                               ) : null}
-                                              {/* Debug: Status is {item?.status} */}
-                                              {/* Temporarily show Retry button for all items to debug */}
-                                              <Button
-                                                onClick={() => handleRetrySlip(item.id)}
-                                                disabled={retryingSlips.has(item.id)}
-                                                className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
-                                              >
-                                                {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'} ({item?.status})
-                                              </Button>
+                                              {item?.status?.toLowerCase() === 'failed' && (
+                                                <Button
+                                                  onClick={() => handleRetrySlip(item.id)}
+                                                  disabled={retryingSlips.has(item.id)}
+                                                  className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
+                                                >
+                                                  {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'}
+                                                </Button>
+                                              )}
                                             </div>
                                           </td>
                                   </tr>
@@ -702,15 +687,15 @@ const userChoiceSlip = () => {
                                                   Pay Now
                                                 </button>
                                               ) : null}
-                                              {/* Debug: Status is {item?.status} */}
-                                              {/* Temporarily show Retry button for all items to debug */}
-                                              <Button
-                                                onClick={() => handleRetrySlip(item.id)}
-                                                disabled={retryingSlips.has(item.id)}
-                                                className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
-                                              >
-                                                {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'} ({item?.status})
-                                              </Button>
+                                              {item?.status?.toLowerCase() === 'failed' && (
+                                                <Button
+                                                  onClick={() => handleRetrySlip(item.id)}
+                                                  disabled={retryingSlips.has(item.id)}
+                                                  className="rounded-md border-0 bg-blue-500 text-white hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed px-4 py-2 text-sm"
+                                                >
+                                                  {retryingSlips.has(item.id) ? 'Retrying...' : 'Retry'}
+                                                </Button>
+                                              )}
                                             </div>
                                           </td>
                                   </tr>
