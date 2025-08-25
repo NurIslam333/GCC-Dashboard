@@ -35,38 +35,73 @@ const userChoiceSlip = () => {
     }
   }, [normalUserSlip]);
 
+  // Handle limit changes - reset to first page and refetch
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [limit]);
+
+  // Handle activeTab changes - reset to first page and refetch
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  // Handle search changes - reset to first page
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  // Initial data fetch
+  useEffect(() => {
+    handleFetchNormalUser();
+  }, [handleFetchNormalUser]);
+
   const handleFetchNormalUser = useCallback(async () => {
     try {
       setIsLoading(true);
       setHasError(false);
       
       const params = new URLSearchParams();
-      params.append('page', currentPage);
-      params.append('perPage', limit);
-      
-      // Only include status if it's not 'all'
-      if (activeTab !== 'all') {
-        params.append('status', activeTab);
+      params.append('page', currentPage.toString());
+      params.append('perPage', limit.toString());
+      params.append('status', activeTab);
+      if (search.trim()) {
+        params.append('search', search.trim());
       }
-      
-      if (search) {
-        params.append('search', search);
+
+      const response = await fetch(`/api/choice-slips?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Handle authentication error
+          toast.error('Authentication failed. Please login again.');
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      const response = await fetch(`/api/choice-slips?${params.toString()}`);
+
       const data = await response.json();
       
-      if (data.status === 'success' && data.slips && data.slips.data && Array.isArray(data.slips.data)) {
-        setNormalUserSlip(data.slips.data);
+      if (data.status === 'success' && data.slips) {
+        setNormalUserSlip(data.slips.data || []);
         setTotalPages(data.slips.last_page || 1);
-        setHasError(false);
+        
+        // Update current page if it's out of bounds
+        if (currentPage > (data.slips.last_page || 1)) {
+          setCurrentPage(1);
+        }
       } else {
         setNormalUserSlip([]);
         setTotalPages(1);
         setHasError(true);
-        toast.error('Invalid data received from server');
+        console.error('API returned error status:', data);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error fetching data:', error);
       setNormalUserSlip([]);
       setTotalPages(1);
       setHasError(true);
@@ -75,11 +110,6 @@ const userChoiceSlip = () => {
       setIsLoading(false);
     }
   }, [currentPage, search, limit, activeTab]);
-
-  // Initial data fetch when component mounts
-  useEffect(() => {
-    handleFetchNormalUser();
-  }, []); // Empty dependency array - only run once on mount
 
   // Debounced search effect
   useEffect(() => {
@@ -249,7 +279,8 @@ const userChoiceSlip = () => {
                   <input
                     type="text"
                     id="large-input"
-                    className="w-64 sm:text-md block rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 pl-4 pr-4 py-2"
+                    disabled={isLoading}
+                    className="w-64 sm:text-md block rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 pl-4 pr-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Search by name, passport, country, city..."
                     value={search}
                     onChange={(e) => {
@@ -258,7 +289,10 @@ const userChoiceSlip = () => {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         setCurrentPage(1);
-                        handleFetchNormalUser();
+                        // Trigger refetch after setting page
+                        setTimeout(() => {
+                          handleFetchNormalUser();
+                        }, 0);
                       }
                     }}
                   />
@@ -267,9 +301,13 @@ const userChoiceSlip = () => {
                       onClick={() => {
                         setSearch('');
                         setCurrentPage(1);
-                        handleFetchNormalUser();
+                        // Trigger refetch after clearing search
+                        setTimeout(() => {
+                          handleFetchNormalUser();
+                        }, 0);
                       }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed"
                       title="Clear search"
                     >
                       ✕
@@ -281,9 +319,17 @@ const userChoiceSlip = () => {
                     setCurrentPage(1);
                     handleFetchNormalUser();
                   }}
-                  className="rounded-md border-0 bg-blue-500 hover:bg-blue-600 transition-colors px-4 py-2"
+                  disabled={isLoading}
+                  className="rounded-md border-0 bg-blue-500 hover:bg-blue-600 transition-colors px-4 py-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Search
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Searching...
+                    </div>
+                  ) : (
+                    'Search'
+                  )}
                 </Button>
               </div>
               <div className="flex items-center gap-2">
@@ -293,17 +339,26 @@ const userChoiceSlip = () => {
                 <select
                   id="limit-select"
                   value={limit}
+                  disabled={isLoading}
                   onChange={(e) => {
-                    setLimit(parseInt(e.target.value));
+                    const newLimit = parseInt(e.target.value);
+                    setLimit(newLimit);
                     setCurrentPage(1); // Reset to first page when changing limit
+                    // Trigger refetch with new limit after state update
+                    setTimeout(() => {
+                      handleFetchNormalUser();
+                    }, 0);
                   }}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                   <option value={75}>75</option>
                   <option value={100}>100</option>
                 </select>
+                {isLoading && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                )}
               </div>
               <Button className="rounded-md border-0 bg-[#a855f7] hover:bg-[#9333ea] transition-colors">
                 <Link href="/type-choice-slip">Type Choice Slip</Link>
@@ -315,9 +370,9 @@ const userChoiceSlip = () => {
             {/* Summary Info */}
             <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Total Records:</span> {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? totalPages * limit : 0} | 
+                <span className="font-medium">Total Records:</span> {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} | 
                 <span className="font-medium ml-2">Page:</span> {currentPage} of {totalPages} | 
-                <span className="font-medium ml-2">Showing:</span> {Array.isArray(normalUserSlip) ? normalUserSlip.length : 0} per page
+                <span className="font-medium ml-2">Showing:</span> {Array.isArray(normalUserSlip) ? normalUserSlip.length : 0} of {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} records
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Sort:</span> {sortField} ({sortDirection === 'asc' ? 'Ascending' : 'Descending'})
@@ -364,8 +419,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-blue-500 text-white': activeTab === 'all',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'all',
+                        'opacity-50 cursor-not-allowed': isLoading
                     })}
-                    onClick={() => setActiveTab('all')}
+                    onClick={() => {
+                      if (isLoading) return;
+                      setActiveTab('all');
+                      setCurrentPage(1);
+                    }}
+                    disabled={isLoading}
                   >
                     All
                 </Tab>
@@ -373,8 +434,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-yellow-500 text-white': activeTab === 'pending',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'pending',
+                        'opacity-50 cursor-not-allowed': isLoading
                     })}
-                    onClick={() => setActiveTab('pending')}
+                    onClick={() => {
+                      if (isLoading) return;
+                      setActiveTab('pending');
+                      setCurrentPage(1);
+                    }}
+                    disabled={isLoading}
                   >
                     Pending
                 </Tab>
@@ -382,8 +449,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-green-500 text-white': activeTab === 'complete',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'complete',
+                        'opacity-50 cursor-not-allowed': isLoading
                     })}
-                    onClick={() => setActiveTab('complete')}
+                    onClick={() => {
+                      if (isLoading) return;
+                      setActiveTab('complete');
+                      setCurrentPage(1);
+                    }}
+                    disabled={isLoading}
                   >
                     Complete
                 </Tab>
@@ -391,8 +464,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-red-500 text-white': activeTab === 'failed',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'failed',
+                        'opacity-50 cursor-not-allowed': isLoading
                     })}
-                    onClick={() => setActiveTab('failed')}
+                    onClick={() => {
+                      if (isLoading) return;
+                      setActiveTab('failed');
+                      setCurrentPage(1);
+                    }}
+                    disabled={isLoading}
                   >
                     Failed
                 </Tab>
@@ -570,7 +649,13 @@ const userChoiceSlip = () => {
                           <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
-                            fetchData={setCurrentPage}
+                            fetchData={(newPage) => {
+                              setCurrentPage(newPage);
+                              // Trigger refetch with new page
+                              setTimeout(() => {
+                                handleFetchNormalUser();
+                              }, 0);
+                            }}
                           />
                         </div>
                       </div>
@@ -707,7 +792,13 @@ const userChoiceSlip = () => {
                           <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
-                            fetchData={setCurrentPage}
+                            fetchData={(newPage) => {
+                              setCurrentPage(newPage);
+                              // Trigger refetch with new page
+                              setTimeout(() => {
+                                handleFetchNormalUser();
+                              }, 0);
+                            }}
                           />
                         </div>
                       </div>
@@ -831,7 +922,13 @@ const userChoiceSlip = () => {
                           <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
-                            fetchData={setCurrentPage}
+                            fetchData={(newPage) => {
+                              setCurrentPage(newPage);
+                              // Trigger refetch with new page
+                              setTimeout(() => {
+                                handleFetchNormalUser();
+                              }, 0);
+                            }}
                           />
                         </div>
                       </div>
@@ -954,7 +1051,13 @@ const userChoiceSlip = () => {
                           <Pagination
                             currentPage={currentPage}
                             totalPages={totalPages}
-                            fetchData={setCurrentPage}
+                            fetchData={(newPage) => {
+                              setCurrentPage(newPage);
+                              // Trigger refetch with new page
+                              setTimeout(() => {
+                                handleFetchNormalUser();
+                              }, 0);
+                            }}
                           />
                         </div>
                       </div>
