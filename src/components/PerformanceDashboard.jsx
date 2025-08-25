@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAPIPerformance, useMemoryUsage } from '@/hook/usePerformance';
 
 const PerformanceDashboard = ({ isVisible = false }) => {
@@ -13,15 +13,7 @@ const PerformanceDashboard = ({ isVisible = false }) => {
   const { getSlowestAPICalls, getAPIAverageTime } = useAPIPerformance();
   const { checkMemoryUsage } = useMemoryUsage();
 
-  useEffect(() => {
-    if (isOpen) {
-      updateMetrics();
-      const interval = setInterval(updateMetrics, 5000); // Update every 5 seconds
-      return () => clearInterval(interval);
-    }
-  }, [isOpen]);
-
-  const updateMetrics = () => {
+  const updateMetrics = useCallback(() => {
     const apiCalls = getSlowestAPICalls(10);
     const memoryUsage = checkMemoryUsage();
     
@@ -35,7 +27,15 @@ const PerformanceDashboard = ({ isVisible = false }) => {
       pageLoadTime,
       renderCount: document.querySelectorAll('[data-component]').length,
     });
-  };
+  }, [getSlowestAPICalls, checkMemoryUsage]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updateMetrics();
+      const interval = setInterval(updateMetrics, 5000); // Update every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, updateMetrics]);
 
   if (!isOpen) {
     return (
@@ -131,7 +131,7 @@ const PerformanceDashboard = ({ isVisible = false }) => {
               localStorage.clear();
               window.location.reload();
             }}
-            className="flex-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors"
+            className="flex-1 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm hover:bg-red-900/40 transition-colors"
           >
             Clear Cache
           </button>

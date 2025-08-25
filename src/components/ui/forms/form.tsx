@@ -1,3 +1,6 @@
+import React from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 import type {
   SubmitHandler,
   UseFormReturn,
@@ -5,14 +8,12 @@ import type {
   FieldValues,
 } from 'react-hook-form';
 import type { SchemaOf } from 'yup';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
 
 type FormProps<TFormValues extends FieldValues> = {
   onSubmit: SubmitHandler<TFormValues>;
   children: (methods: UseFormReturn<TFormValues>) => React.ReactNode;
   useFormProps?: UseFormProps<TFormValues>;
-  validationSchema?: SchemaOf<TFormValues>;
+  validationSchema?: SchemaOf<TFormValues> | any; // Allow any schema type for flexibility
 } & Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'>;
 
 export const Form = <
@@ -31,11 +32,9 @@ export const Form = <
   return (
     <form
       onSubmit={methods.handleSubmit(onSubmit)}
-      noValidate
       {...formProps}
-      className="space-y-4"
     >
-      {children(methods)}
+      <FormProvider {...methods}>{children(methods)}</FormProvider>
     </form>
   );
 };

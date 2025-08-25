@@ -20,14 +20,15 @@ export const usePerformance = (componentName) => {
 
   // Track mount performance
   useEffect(() => {
-    const mountDuration = performance.now() - mountTime.current;
+    const mountStartTime = mountTime.current;
+    const mountDuration = performance.now() - mountStartTime;
     
     if (process.env.NODE_ENV === 'development') {
       console.log(`[${componentName}] Mounted in ${mountDuration.toFixed(2)}ms`);
     }
     
     return () => {
-      const totalLifetime = performance.now() - mountTime.current;
+      const totalLifetime = performance.now() - mountStartTime;
       if (process.env.NODE_ENV === 'development') {
         console.log(`[${componentName}] Unmounted after ${totalLifetime.toFixed(2)}ms (${renderCount.current} renders)`);
       }
