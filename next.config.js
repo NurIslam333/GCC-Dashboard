@@ -13,9 +13,8 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
-  // Experimental features for performance
+  // Experimental features for performance (removed problematic ones)
   experimental: {
-    optimizeCss: true,
     scrollRestoration: true,
     legacyBrowsers: false,
   },
