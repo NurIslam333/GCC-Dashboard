@@ -2,12 +2,13 @@ import type {
   SubmitHandler,
   UseFormReturn,
   UseFormProps,
+  FieldValues,
 } from 'react-hook-form';
 import type { SchemaOf } from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 
-type FormProps<TFormValues> = {
+type FormProps<TFormValues extends FieldValues> = {
   onSubmit: SubmitHandler<TFormValues>;
   children: (methods: UseFormReturn<TFormValues>) => React.ReactNode;
   useFormProps?: UseFormProps<TFormValues>;
@@ -15,7 +16,7 @@ type FormProps<TFormValues> = {
 } & Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'>;
 
 export const Form = <
-  TFormValues extends Record<string, any> = Record<string, any>
+  TFormValues extends FieldValues = Record<string, any>
 >({
   onSubmit,
   children,

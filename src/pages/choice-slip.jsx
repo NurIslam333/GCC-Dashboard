@@ -11,6 +11,7 @@ import moment from 'moment';
 import Link from 'next/link';
 import Pagination from '@/components/gcc-component/Pagination';
 import toast from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 
 const userChoiceSlip = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -23,10 +24,101 @@ const userChoiceSlip = () => {
   const [sortField, setSortField] = useState('created_at');
   const [sortDirection, setSortDirection] = useState('desc');
   const [searchTimeout, setSearchTimeout] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const prevSearchRef = useRef(search);
   
+  const queryClient = useQueryClient();
+  
+  // React Query for data fetching
+  const { data, isLoading: queryLoading, error, refetch } = useQuery(
+    ['choice-slips', currentPage, limit, activeTab, search],
+    async () => {
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('perPage', limit.toString());
+      params.append('status', activeTab);
+      if (search.trim()) {
+        params.append('search', search.trim());
+      }
+
+      const response = await fetch(`/api/choice-slips?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please login again.');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.slips) {
+        return data;
+      } else {
+        throw new Error('API returned error status');
+      }
+    },
+    {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      cacheTime: 5 * 60 * 1000, // 5 minutes
+      onSuccess: (data) => {
+        setNormalUserSlip(data.slips.data || []);
+        setTotalPages(data.slips.last_page || 1);
+        setHasError(false);
+        
+        // Update current page if it's out of bounds
+        if (currentPage > (data.slips.last_page || 1)) {
+          setCurrentPage(1);
+        }
+      },
+      onError: (error) => {
+        console.error('Error fetching data:', error);
+        setNormalUserSlip([]);
+        setTotalPages(1);
+        setHasError(true);
+        toast.error(error.message || 'Failed to fetch data. Please try again.');
+      }
+    }
+  );
+
+  // Retry slip mutation
+  const retryMutation = useMutation(
+    async (slipId) => {
+      const response = await fetch('/api/retry-slip-submission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slip_id: slipId }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        return data;
+      } else {
+        throw new Error(data.message || 'Failed to retry slip');
+      }
+    },
+    {
+      onSuccess: () => {
+        toast.success('Slip retry initiated successfully!');
+        // Invalidate and refetch the data
+        queryClient.invalidateQueries(['choice-slips']);
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to retry slip. Please try again.');
+      }
+    }
+  );
+
   // Safety effect to ensure normalUserSlip is always an array
   useEffect(() => {
     if (!Array.isArray(normalUserSlip)) {
@@ -50,67 +142,6 @@ const userChoiceSlip = () => {
     setCurrentPage(1);
   }, [search]);
 
-  // Initial data fetch
-  useEffect(() => {
-    handleFetchNormalUser();
-  }, [handleFetchNormalUser]);
-
-  const handleFetchNormalUser = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setHasError(false);
-      
-      const params = new URLSearchParams();
-      params.append('page', currentPage.toString());
-      params.append('perPage', limit.toString());
-      params.append('status', activeTab);
-      if (search.trim()) {
-        params.append('search', search.trim());
-      }
-
-      const response = await fetch(`/api/choice-slips?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Handle authentication error
-          toast.error('Authentication failed. Please login again.');
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.status === 'success' && data.slips) {
-        setNormalUserSlip(data.slips.data || []);
-        setTotalPages(data.slips.last_page || 1);
-        
-        // Update current page if it's out of bounds
-        if (currentPage > (data.slips.last_page || 1)) {
-          setCurrentPage(1);
-        }
-      } else {
-        setNormalUserSlip([]);
-        setTotalPages(1);
-        setHasError(true);
-        console.error('API returned error status:', data);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setNormalUserSlip([]);
-      setTotalPages(1);
-      setHasError(true);
-      toast.error('Failed to fetch data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, search, limit, activeTab]);
-
   // Debounced search effect
   useEffect(() => {
     // Clear any existing search timeout
@@ -125,8 +156,6 @@ const userChoiceSlip = () => {
         setCurrentPage(1);
       }
       
-      handleFetchNormalUser();
-      
       // Update the ref to track the current search value
       prevSearchRef.current = search;
     }, search ? 500 : 0); // 500ms delay for search, no delay for other changes
@@ -138,34 +167,14 @@ const userChoiceSlip = () => {
         clearTimeout(timeout);
       }
     };
-  }, [activeTab, currentPage, search, limit]); // Only depend on the actual values, not the function
-  
-  // Note: handleFetchNormalUser is not included in dependencies to prevent infinite loops
-  // The function is stable due to useCallback with proper dependencies
+  }, [activeTab, currentPage, search, limit]);
 
   const handleRetrySlip = async (slipId) => {
     try {
       setRetryingSlips(prev => new Set(prev).add(slipId));
-      
-      const response = await fetch('/api/retry-slip-submission', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ slip_id: slipId }),
-      });
-      
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        toast.success('Slip retry initiated successfully!');
-        // Refresh the data to show updated status
-        handleFetchNormalUser();
-      } else {
-        toast.error(data.message || 'Failed to retry slip');
-      }
+      await retryMutation.mutateAsync(slipId);
     } catch (error) {
-        toast.error('Failed to retry slip. Please try again.');
+      console.error('Retry error:', error);
     } finally {
       setRetryingSlips(prev => {
         const newSet = new Set(prev);
@@ -279,7 +288,7 @@ const userChoiceSlip = () => {
                   <input
                     type="text"
                     id="large-input"
-                    disabled={isLoading}
+                    disabled={queryLoading}
                     className="w-64 sm:text-md block rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500 pl-4 pr-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Search by name, passport, country, city..."
                     value={search}
@@ -291,7 +300,7 @@ const userChoiceSlip = () => {
                         setCurrentPage(1);
                         // Trigger refetch after setting page
                         setTimeout(() => {
-                          handleFetchNormalUser();
+                          refetch();
                         }, 0);
                       }
                     }}
@@ -303,10 +312,10 @@ const userChoiceSlip = () => {
                         setCurrentPage(1);
                         // Trigger refetch after clearing search
                         setTimeout(() => {
-                          handleFetchNormalUser();
+                          refetch();
                         }, 0);
                       }}
-                      disabled={isLoading}
+                      disabled={queryLoading}
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:text-gray-300 disabled:cursor-not-allowed"
                       title="Clear search"
                     >
@@ -317,12 +326,12 @@ const userChoiceSlip = () => {
                 <Button
                   onClick={() => {
                     setCurrentPage(1);
-                    handleFetchNormalUser();
+                    refetch();
                   }}
-                  disabled={isLoading}
+                  disabled={queryLoading}
                   className="rounded-md border-0 bg-blue-500 hover:bg-blue-600 transition-colors px-4 py-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? (
+                  {queryLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       Searching...
@@ -339,14 +348,14 @@ const userChoiceSlip = () => {
                 <select
                   id="limit-select"
                   value={limit}
-                  disabled={isLoading}
+                  disabled={queryLoading}
                   onChange={(e) => {
                     const newLimit = parseInt(e.target.value);
                     setLimit(newLimit);
                     setCurrentPage(1); // Reset to first page when changing limit
                     // Trigger refetch with new limit after state update
                     setTimeout(() => {
-                      handleFetchNormalUser();
+                      refetch();
                     }, 0);
                   }}
                   className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -356,7 +365,7 @@ const userChoiceSlip = () => {
                   <option value={75}>75</option>
                   <option value={100}>100</option>
                 </select>
-                {isLoading && (
+                {queryLoading && (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                 )}
               </div>
@@ -389,7 +398,7 @@ const userChoiceSlip = () => {
                   <p><strong>Data Value:</strong> {JSON.stringify(normalUserSlip, null, 2)}</p>
                 </div>
                 <button 
-                  onClick={handleFetchNormalUser}
+                  onClick={refetch}
                   className="mt-2 rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
                 >
                   Retry
@@ -398,7 +407,7 @@ const userChoiceSlip = () => {
             )}
             
             {/* Loading indicator */}
-            {isLoading && (
+            {queryLoading && (
               <div className="mb-4 rounded-lg bg-blue-50 p-4 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
@@ -410,7 +419,7 @@ const userChoiceSlip = () => {
             
             
             {/* Only render tabs if we have valid data and not loading */}
-            {!isLoading && Array.isArray(normalUserSlip) && (
+            {!queryLoading && Array.isArray(normalUserSlip) && (
               <>
                 {/* Tab buttons - always show regardless of data */}
             <Tab.Group>
@@ -419,14 +428,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-blue-500 text-white': activeTab === 'all',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'all',
-                        'opacity-50 cursor-not-allowed': isLoading
+                        'opacity-50 cursor-not-allowed': queryLoading
                     })}
                     onClick={() => {
-                      if (isLoading) return;
+                      if (queryLoading) return;
                       setActiveTab('all');
                       setCurrentPage(1);
                     }}
-                    disabled={isLoading}
+                    disabled={queryLoading}
                   >
                     All
                 </Tab>
@@ -434,14 +443,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-yellow-500 text-white': activeTab === 'pending',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'pending',
-                        'opacity-50 cursor-not-allowed': isLoading
+                        'opacity-50 cursor-not-allowed': queryLoading
                     })}
                     onClick={() => {
-                      if (isLoading) return;
+                      if (queryLoading) return;
                       setActiveTab('pending');
                       setCurrentPage(1);
                     }}
-                    disabled={isLoading}
+                    disabled={queryLoading}
                   >
                     Pending
                 </Tab>
@@ -449,14 +458,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-green-500 text-white': activeTab === 'complete',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'complete',
-                        'opacity-50 cursor-not-allowed': isLoading
+                        'opacity-50 cursor-not-allowed': queryLoading
                     })}
                     onClick={() => {
-                      if (isLoading) return;
+                      if (queryLoading) return;
                       setActiveTab('complete');
                       setCurrentPage(1);
                     }}
-                    disabled={isLoading}
+                    disabled={queryLoading}
                   >
                     Complete
                 </Tab>
@@ -464,14 +473,14 @@ const userChoiceSlip = () => {
                       className={cn('rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer', {
                         '!bg-red-500 text-white': activeTab === 'failed',
                         'bg-gray-200 text-gray-700 hover:bg-gray-300': activeTab !== 'failed',
-                        'opacity-50 cursor-not-allowed': isLoading
+                        'opacity-50 cursor-not-allowed': queryLoading
                     })}
                     onClick={() => {
-                      if (isLoading) return;
+                      if (queryLoading) return;
                       setActiveTab('failed');
                       setCurrentPage(1);
                     }}
-                    disabled={isLoading}
+                    disabled={queryLoading}
                   >
                     Failed
                 </Tab>
@@ -653,7 +662,7 @@ const userChoiceSlip = () => {
                               setCurrentPage(newPage);
                               // Trigger refetch with new page
                               setTimeout(() => {
-                                handleFetchNormalUser();
+                                refetch();
                               }, 0);
                             }}
                           />
@@ -796,7 +805,7 @@ const userChoiceSlip = () => {
                               setCurrentPage(newPage);
                               // Trigger refetch with new page
                               setTimeout(() => {
-                                handleFetchNormalUser();
+                                refetch();
                               }, 0);
                             }}
                           />
@@ -926,7 +935,7 @@ const userChoiceSlip = () => {
                               setCurrentPage(newPage);
                               // Trigger refetch with new page
                               setTimeout(() => {
-                                handleFetchNormalUser();
+                                refetch();
                               }, 0);
                             }}
                           />
@@ -1055,7 +1064,7 @@ const userChoiceSlip = () => {
                               setCurrentPage(newPage);
                               // Trigger refetch with new page
                               setTimeout(() => {
-                                handleFetchNormalUser();
+                                refetch();
                               }, 0);
                             }}
                           />

@@ -32,6 +32,21 @@ import Button from '@/components/ui/button';
 import { headers } from '@/utls/auth';
 import axios from 'axios';
 import Otp from '../components/drag-and-drop/Otp';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { ReactQueryDevtools } from 'react-query/devtools';
+import PerformanceDashboard from '@/components/PerformanceDashboard';
+
+// Create a client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+    },
+  },
+});
 
 function CustomApp({ Component, pageProps }) {
   const token = Cookies.get('token');
@@ -697,7 +712,7 @@ function CustomApp({ Component, pageProps }) {
   //could remove this if you don't need to page level layout
   const getLayout = Component.getLayout ?? ((page) => page);
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <Head>
         {/* maximum-scale 1 meta tag need to prevent ios input focus auto zooming */}
         <meta
@@ -741,7 +756,9 @@ function CustomApp({ Component, pageProps }) {
           <DrawersContainer />
         </WalletProvider>
       </ThemeProvider>
-    </>
+      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === 'development' && <PerformanceDashboard />}
+    </QueryClientProvider>
   );
 }
 
