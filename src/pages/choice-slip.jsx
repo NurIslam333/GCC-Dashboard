@@ -21,13 +21,33 @@ const userChoiceSlip = () => {
   const [limit, setLimit] = useState(25);
   const [normalUserSlip, setNormalUserSlip] = useState([]);
   const [retryingSlips, setRetryingSlips] = useState(new Set());
-  const [sortField, setSortField] = useState('created_at');
+  const [sortField, setSortField] = useState('completed_at');
   const [sortDirection, setSortDirection] = useState('desc');
   const [searchTimeout, setSearchTimeout] = useState(null);
   const [hasError, setHasError] = useState(false);
+
   const prevSearchRef = useRef(search);
   
   const queryClient = useQueryClient();
+  
+  // Helper function to format completed date
+  const formatCompletedDate = (completedAt) => {
+    if (!completedAt) {
+      return "Not Completed Yet";
+    }
+    return (
+      <>
+        {moment(completedAt).format('DD/MM/YYYY')}
+        <br />
+        {moment(completedAt).format('hh:mm A')}
+      </>
+    );
+  };
+
+  // Helper function to calculate professional SL No
+  const calculateSLNo = (index) => {
+    return (currentPage - 1) * limit + index + 1;
+  };
   
   // React Query for data fetching
   const { data, isLoading: queryLoading, error, refetch } = useQuery(
@@ -36,10 +56,15 @@ const userChoiceSlip = () => {
       const params = new URLSearchParams();
       params.append('page', currentPage.toString());
       params.append('perPage', limit.toString());
+      
+      // Always send status to get proper filtering
       params.append('status', activeTab);
+      
       if (search.trim()) {
         params.append('search', search.trim());
       }
+
+
 
       const response = await fetch(`/api/choice-slips?${params.toString()}`, {
         method: 'GET',
@@ -64,22 +89,27 @@ const userChoiceSlip = () => {
       }
     },
     {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       retry: 1,
-      staleTime: 2 * 60 * 1000, // 2 minutes
-      cacheTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 0, // No cache - always fetch fresh data
+      cacheTime: 0, // No cache - always fetch fresh data
       onSuccess: (data) => {
-        setNormalUserSlip(data.slips.data || []);
-        setTotalPages(data.slips.last_page || 1);
+        // Ensure we're getting the filtered data
+        const filteredData = data.slips?.data || [];
+        
+
+        
+        // Set both the original data and filtered data
+        setNormalUserSlip(filteredData);
+        setTotalPages(data.slips?.last_page || 1);
         setHasError(false);
         
         // Update current page if it's out of bounds
-        if (currentPage > (data.slips.last_page || 1)) {
+        if (currentPage > (data.slips?.last_page || 1)) {
           setCurrentPage(1);
         }
       },
       onError: (error) => {
-        console.error('Error fetching data:', error);
         setNormalUserSlip([]);
         setTotalPages(1);
         setHasError(true);
@@ -127,15 +157,25 @@ const userChoiceSlip = () => {
     }
   }, [normalUserSlip]);
 
+
+
   // Handle limit changes - reset to first page and refetch
   useEffect(() => {
     setCurrentPage(1);
-  }, [limit]);
+    // Refetch data when limit changes to ensure proper pagination
+    setTimeout(() => {
+      refetch();
+    }, 0);
+  }, [limit, refetch]);
 
   // Handle activeTab changes - reset to first page and refetch
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab]);
+    // Refetch data when tab changes to ensure proper status filtering
+    setTimeout(() => {
+      refetch();
+    }, 0);
+  }, [activeTab, refetch]);
 
   // Handle search changes - reset to first page
   useEffect(() => {
@@ -174,7 +214,7 @@ const userChoiceSlip = () => {
       setRetryingSlips(prev => new Set(prev).add(slipId));
       await retryMutation.mutateAsync(slipId);
     } catch (error) {
-      console.error('Retry error:', error);
+      // Handle retry error silently
     } finally {
       setRetryingSlips(prev => {
         const newSet = new Set(prev);
@@ -241,7 +281,7 @@ const userChoiceSlip = () => {
       }
       
       // Handle date fields
-      if (sortField === 'created_at') {
+      if (sortField === 'completed_at') {
         aValue = new Date(aValue || 0);
         bValue = new Date(bValue || 0);
       }
@@ -329,7 +369,7 @@ const userChoiceSlip = () => {
                     refetch();
                   }}
                   disabled={queryLoading}
-                  className="rounded-md border-0 bg-blue-500 hover:bg-blue-600 transition-colors px-4 py-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {queryLoading ? (
                     <div className="flex items-center gap-2">
@@ -369,25 +409,32 @@ const userChoiceSlip = () => {
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                 )}
               </div>
-              <Button className="rounded-md border-0 bg-[#a855f7] hover:bg-[#9333ea] transition-colors">
-                <Link href="/type-choice-slip">Type Choice Slip</Link>
-              </Button>
+              
+
+              
+                                                           <Button className="rounded-md border-0 px-4 py-2 font-medium transition-colors cursor-pointer bg-[#a855f7] hover:bg-[#9333ea] text-white">
+                   <Link href="/type-choice-slip">Type Choice Slip</Link>
+                 </Button>
             </div>
           </div>
 
           <div className="mt-5">
             {/* Summary Info */}
             <div className="mb-4 flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Total Records:</span> {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} | 
-                <span className="font-medium ml-2">Page:</span> {currentPage} of {totalPages} | 
-                <span className="font-medium ml-2">Showing:</span> {Array.isArray(normalUserSlip) ? normalUserSlip.length : 0} of {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} records
-              </div>
+
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="font-medium">Total Records:</span> {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} | 
+                  <span className="font-medium ml-2">Page:</span> {currentPage} of {totalPages} | 
+                  <span className="font-medium ml-2">Showing:</span> {Array.isArray(normalUserSlip) ? normalUserSlip.length : 0} of {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 ? (totalPages * limit) : 0} records
+
+                </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Sort:</span> {sortField} ({sortDirection === 'asc' ? 'Ascending' : 'Descending'})
               </div>
             </div>
             
+
+
             {/* Safety check - ensure normalUserSlip is always an array */}
             {hasError && (
               <div className="mb-4 rounded-lg bg-red-50 p-4 text-red-800 dark:bg-red-900 dark:text-red-200">
@@ -406,6 +453,8 @@ const userChoiceSlip = () => {
               </div>
             )}
             
+
+            
             {/* Loading indicator */}
             {queryLoading && (
               <div className="mb-4 rounded-lg bg-blue-50 p-4 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -415,9 +464,8 @@ const userChoiceSlip = () => {
                 </div>
               </div>
             )}
-            
-            
-            
+
+
             {/* Only render tabs if we have valid data and not loading */}
             {!queryLoading && Array.isArray(normalUserSlip) && (
               <>
@@ -539,10 +587,10 @@ const userChoiceSlip = () => {
                               </th>
                               <th 
                                 className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
-                                onClick={() => handleSort('created_at')}
+                                onClick={() => handleSort('completed_at')}
                               >
                                 <div className="flex items-center justify-between">
-                                  Submit Date, Time {getSortIcon('created_at')}
+                                  Completed Date, Time {getSortIcon('completed_at')}
                                 </div>
                               </th>
                               <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-br-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
@@ -583,7 +631,7 @@ const userChoiceSlip = () => {
                                     className="mb-3 items-center rounded-lg bg-white uppercase shadow-card last:mb-0 hover:shadow-large dark:bg-light-dark"
                                   >
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {i + 1}
+                                      {calculateSLNo(i)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item.first_name} {item.last_name}
@@ -598,9 +646,7 @@ const userChoiceSlip = () => {
                                       {item.city}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {moment(item?.created_at).format('DD/MM/YYYY')}
-                                      <br />
-                                      {moment(item?.created_at).format('hh:mm A')}
+                                      {formatCompletedDate(item?.completed_at)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.medical_list?.map((item, i, array) => (
@@ -695,10 +741,16 @@ const userChoiceSlip = () => {
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 City
                               </th>
-                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Completed Date, Time
+                              
+                              <th 
+                                className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4 cursor-pointer hover:bg-gray-50"
+                                onClick={() => handleSort('completed_at')}
+                              >
+                                <div className="flex items-center justify-between">
+                                  Completed Date, Time {getSortIcon('completed_at')}
+                                </div>
                               </th>
-                                    <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
+                              <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
                               </th>
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
@@ -726,7 +778,7 @@ const userChoiceSlip = () => {
                                     className="mb-3 items-center rounded-lg bg-white uppercase shadow-card last:mb-0 hover:shadow-large dark:bg-light-dark"
                                   >
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {i + 1}
+                                      {calculateSLNo(i)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item.first_name} {item.last_name}
@@ -741,9 +793,7 @@ const userChoiceSlip = () => {
                                       {item.city}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {moment(item?.completed_at).format('DD/MM/YYYY')}
-                                      <br />
-                                      {moment(item?.completed_at).format('hh:mm A')}
+                                      {formatCompletedDate(item?.completed_at)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.medical_list?.map((item, i, array) => (
@@ -835,7 +885,7 @@ const userChoiceSlip = () => {
                                 <p>City</p>
                               </th>
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Submit Date, Time
+                                Completed Date, Time
                               </th>
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
@@ -853,9 +903,9 @@ const userChoiceSlip = () => {
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
-                              normalUserSlip.map((item, i) => {
+                                                     <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
+                                   {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
+                               normalUserSlip.map((item, i) => {
                                       // Additional safety check for item
                                       if (!item || typeof item !== 'object') {
                                         return null;
@@ -867,7 +917,7 @@ const userChoiceSlip = () => {
                                     className="mb-3 items-center rounded-lg bg-white uppercase shadow-card last:mb-0 hover:shadow-large dark:bg-light-dark"
                                   >
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {i + 1}
+                                      {calculateSLNo(i)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item.first_name} {item.last_name}
@@ -880,9 +930,7 @@ const userChoiceSlip = () => {
                                       {item?.city}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {moment(item?.created_at).format('DD/MM/YYYY')}
-                                      <br />
-                                      {moment(item?.created_at).format('hh:mm A')}
+                                      {formatCompletedDate(item?.completed_at)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.medical_list?.map((item, i, array) => (
@@ -969,7 +1017,7 @@ const userChoiceSlip = () => {
                                 City
                               </th>
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
-                                Submit Date, Time
+                                Completed Date, Time
                               </th>
                                     <th className="group bg-white px-2 py-5 font-semibold text-green-600 first:rounded-bl-lg last:rounded-bl-lg ltr:first:pl-8 ltr:last:pr-8 rtl:first:pr-8 rtl:last:pl-8 dark:bg-light-dark md:px-4">
                                 Choice Center
@@ -985,9 +1033,9 @@ const userChoiceSlip = () => {
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
-                                  {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
-                              normalUserSlip.map((item, i) => {
+                                                     <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
+                                   {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
+                               normalUserSlip.map((item, i) => {
                                       // Additional safety check for item
                                       if (!item || typeof item !== 'object') {
                                         return null;
@@ -999,7 +1047,7 @@ const userChoiceSlip = () => {
                                     className="mb-3 items-center rounded-lg bg-white uppercase shadow-card last:mb-0 hover:shadow-large dark:bg-light-dark"
                                   >
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {i + 1}
+                                      {calculateSLNo(i)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item.first_name} {item.last_name}
@@ -1014,9 +1062,7 @@ const userChoiceSlip = () => {
                                       {item.city}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
-                                      {moment(item?.created_at).format('DD/MM/YYYY')}
-                                      <br />
-                                      {moment(item?.created_at).format('hh:mm A')}
+                                      {formatCompletedDate(item?.completed_at)}
                                     </td>
                                     <td className="px-2 py-4 tracking-[1px] ltr:first:pl-4 ltr:last:pr-4 rtl:first:pr-8 rtl:last:pl-8 md:px-4 md:py-6 md:ltr:first:pl-8 md:ltr:last:pr-8">
                                       {item?.medical_list?.map((item, i, array) => (
@@ -1094,5 +1140,6 @@ const userChoiceSlip = () => {
 // export default userChoiceSlip;
 export default withAuth(userChoiceSlip, {
   isProtectedRoute: true,
-  show: false,
+  show: true,
+  requireAdmin: false, // Only admins can access this page
 });

@@ -36,6 +36,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { ReactQueryDevtools } from 'react-query/devtools';
 import PerformanceDashboard from '@/components/PerformanceDashboard';
 
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {

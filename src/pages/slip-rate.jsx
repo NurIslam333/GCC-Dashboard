@@ -647,5 +647,6 @@ const slipRate = () => {
 // export default userChoiceSlip;
 export default withAuth(slipRate, {
   isProtectedRoute: true,
-  show: false,
+  show: true,
+  requireAdmin: false, // Only admins can access this page
 });

@@ -19,11 +19,71 @@ export default async function handler(req, res) {
       });
     }
 
-    const { page = 1, perPage = 25, status, search } = req.query;
+    const { page = 1, perPage = 25, status, search, start_date, end_date, slip_type } = req.query;
     
     // Validate and sanitize parameters
     const currentPage = Math.max(1, parseInt(page));
     const itemsPerPage = Math.max(1, Math.min(100, parseInt(perPage))); // Limit max to 100
+    
+    // Enhanced date validation and formatting
+    let validatedStartDate = null;
+    let validatedEndDate = null;
+    
+    if (start_date) {
+      try {
+        const startDate = new Date(start_date);
+        if (isNaN(startDate.getTime())) {
+          return res.status(422).json({
+            status: 'error',
+            message: 'Invalid start_date format. Use YYYY-MM-DD format.',
+            remark: 'validation_error',
+            details: `Provided start_date: ${start_date}`
+          });
+        }
+        validatedStartDate = startDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      } catch (error) {
+        return res.status(422).json({
+          status: 'error',
+          message: 'Invalid start_date format',
+          remark: 'validation_error',
+          details: error.message
+        });
+      }
+    }
+    
+    if (end_date) {
+      try {
+        const endDate = new Date(end_date);
+        if (isNaN(endDate.getTime())) {
+          return res.status(422).json({
+            status: 'error',
+            message: 'Invalid end_date format. Use YYYY-MM-DD format.',
+            remark: 'validation_error',
+            details: `Provided end_date: ${end_date}`
+          });
+        }
+        validatedEndDate = endDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+      } catch (error) {
+        return res.status(422).json({
+          status: 'error',
+          message: 'Invalid end_date format',
+          remark: 'validation_error',
+          details: error.message
+        });
+      }
+    }
+    
+    // Validate date range logic
+    if (validatedStartDate && validatedEndDate) {
+      if (validatedStartDate > validatedEndDate) {
+        return res.status(422).json({
+          status: 'error',
+          message: 'start_date cannot be after end_date',
+          remark: 'validation_error',
+          details: `start_date: ${validatedStartDate}, end_date: ${validatedEndDate}`
+        });
+      }
+    }
     
     const apiUrl = `${process.env.API_URL}/choice-slips`;
     
@@ -38,6 +98,19 @@ export default async function handler(req, res) {
       params.search = search.trim();
     }
 
+    // Add enhanced date filtering parameters
+    if (validatedStartDate) {
+      params.start_date = validatedStartDate;
+    }
+    if (validatedEndDate) {
+      params.end_date = validatedEndDate;
+    }
+
+    // Add slip_type if provided
+    if (slip_type && slip_type.trim()) {
+      params.slip_type = slip_type.trim();
+    }
+
     // Create headers dynamically with the current token
     const requestHeaders = {
       'Authorization': `Bearer ${token}`,
@@ -50,20 +123,109 @@ export default async function handler(req, res) {
     if (status && status !== 'all') {
       // Specific status provided - make single API call
       // Map frontend status values to external API expected values
+      // Try multiple possible status values that external API might expect
       const statusMapping = {
         'pending': 'pending',
         'complete': 'complete', 
         'failed': 'failed',
         'PENDING': 'pending',
         'COMPLETE': 'complete',
-        'FAILED': 'failed'
+        'FAILED': 'failed',
+        // Additional variations that external APIs might expect
+        'completed': 'completed',
+        'success': 'success',
+        'error': 'error',
+        'rejected': 'rejected'
       };
       
       const mappedStatus = statusMapping[status] || status;
+      
+      // Enhanced status parameter handling
+      
+      // Try multiple status parameter names that external APIs commonly use
+      const possibleStatusParams = ['status', 'state', 'type', 'condition'];
+      let successfulResponse = null;
+      
+      // First try with the mapped status
+      for (const paramName of possibleStatusParams) {
+        const testParams = { ...params };
+        testParams[paramName] = mappedStatus;
+        
+        const testQueryString = new URLSearchParams(testParams).toString();
+        const testUrl = `${apiUrl}?${testQueryString}`;
+        
+
+        
+        try {
+          const testResponse = await fetch(testUrl, {
+            method: 'GET',
+            headers: requestHeaders,
+            signal: controller.signal,
+          });
+          
+          if (testResponse.ok) {
+            const testData = await testResponse.json();
+            if (testData.status === 'success') {
+
+              successfulResponse = testData;
+              break;
+            }
+          }
+        } catch (error) {
+          // Silent error handling
+        }
+      }
+      
+      // If that failed, try alternative status values for "complete" and "failed"
+      if (!successfulResponse && (status === 'complete' || status === 'failed')) {
+        const alternativeStatuses = status === 'complete' 
+          ? ['completed', 'success', 'done', 'finished']
+          : ['error', 'rejected', 'declined', 'unsuccessful'];
+        
+        for (const altStatus of alternativeStatuses) {
+          for (const paramName of possibleStatusParams) {
+            const testParams = { ...params };
+            testParams[paramName] = altStatus;
+            
+            const testQueryString = new URLSearchParams(testParams).toString();
+            const testUrl = `${apiUrl}?${testQueryString}`;
+            
+
+            
+            try {
+              const testResponse = await fetch(testUrl, {
+                method: 'GET',
+                headers: requestHeaders,
+                signal: controller.signal,
+              });
+              
+              if (testResponse.ok) {
+                const testData = await testResponse.json();
+                if (testData.status === 'success') {
+
+                  successfulResponse = testData;
+                  break;
+                }
+              }
+            } catch (error) {
+              // Silent error handling
+            }
+          }
+          if (successfulResponse) break;
+        }
+      }
+      
+      if (successfulResponse) {
+        return res.status(200).json(successfulResponse);
+      }
+      
+      // If all attempts failed, proceed with original status parameter
       params.status = mappedStatus;
       
       const queryString = new URLSearchParams(params).toString();
       const fullUrl = `${apiUrl}?${queryString}`;
+      
+
       
       // Use AbortController for timeout handling
       const controller = new AbortController();
@@ -88,51 +250,6 @@ export default async function handler(req, res) {
             params: params,
             headers: requestHeaders
           });
-          
-          // Try alternative status parameter names if the first attempt fails
-          if (response.status === 400 || response.status === 422) {
-            
-            // Try different parameter names that external APIs commonly use
-            const alternativeParams = { ...params };
-            delete alternativeParams.status;
-            
-            // Try 'state' instead of 'status'
-            alternativeParams.state = mappedStatus;
-            const altQueryString = new URLSearchParams(alternativeParams).toString();
-            const altUrl = `${apiUrl}?${altQueryString}`;
-            
-            const altResponse = await fetch(altUrl, {
-              method: 'GET',
-              headers: requestHeaders,
-              signal: controller.signal,
-            });
-            
-            if (altResponse.ok) {
-              const altData = await altResponse.json();
-              if (altData.status === 'success') {
-                return res.status(200).json(altData);
-              }
-            }
-            
-            // Try 'type' instead of 'status'
-            delete alternativeParams.state;
-            alternativeParams.type = mappedStatus;
-            const altQueryString2 = new URLSearchParams(alternativeParams).toString();
-            const altUrl2 = `${apiUrl}?${altQueryString2}`;
-            
-            const altResponse2 = await fetch(altUrl2, {
-              method: 'GET',
-              headers: requestHeaders,
-              signal: controller.signal,
-            });
-            
-            if (altResponse2.ok) {
-              const altData2 = await altResponse2.json();
-              if (altData2.status === 'success') {
-                return res.status(200).json(altData2);
-              }
-            }
-          }
           
           // Handle authentication errors specifically
           if (response.status === 401) {
@@ -183,6 +300,24 @@ export default async function handler(req, res) {
               per_page: itemsPerPage,
               from: data.slips?.data?.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0,
               to: Math.min(currentPage * itemsPerPage, data.slips?.total || 0)
+            },
+            // Add filter metadata for debugging and UI feedback
+            filter_meta: {
+              applied_filters: {
+                status: mappedStatus,
+                start_date: validatedStartDate,
+                end_date: validatedEndDate,
+                search: search?.trim(),
+                slip_type: slip_type?.trim(),
+                page: currentPage,
+                per_page: itemsPerPage
+              },
+              total_filtered: data.slips?.total || 0,
+              date_range: validatedStartDate && validatedEndDate ? {
+                start: validatedStartDate,
+                end: validatedEndDate,
+                days: Math.ceil((new Date(validatedEndDate) - new Date(validatedStartDate)) / (1000 * 60 * 60 * 24)) + 1
+              } : null
             }
           };
           
@@ -279,6 +414,24 @@ export default async function handler(req, res) {
             // Additional metadata for better UX
             has_more_pages: currentPage < totalPages,
             has_previous_pages: currentPage > 1
+          },
+          // Add filter metadata for debugging and UI feedback
+          filter_meta: {
+            applied_filters: {
+              status: 'all',
+              start_date: validatedStartDate,
+              end_date: validatedEndDate,
+              search: search?.trim(),
+              slip_type: slip_type?.trim(),
+              page: currentPage,
+              per_page: itemsPerPage
+            },
+            total_filtered: allResults.length,
+            date_range: validatedStartDate && validatedEndDate ? {
+              start: validatedStartDate,
+              end: validatedEndDate,
+              days: Math.ceil((new Date(validatedEndDate) - new Date(validatedStartDate)) / (1000 * 60 * 60 * 24)) + 1
+            } : null
           }
         });
         

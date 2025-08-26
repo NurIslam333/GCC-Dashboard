@@ -562,5 +562,6 @@ const HomePage = () => {
 // export default HomePage;
 export default withAuth(HomePage, {
   isProtectedRoute: true,
-  show: false,
+  show: true,
+  requireAdmin: false, // Only admins can access this page
 });

@@ -46,10 +46,10 @@ const validationSchema = Yup.object().shape({
 
 const animatedComponents = makeAnimated();
 const typeChoicSlip = () => {
-  const [city , setCity] = useState('')
+  const [city , setCity] = useState('80') // Default to Dhaka
   const [shuffledItems, setShuffledItems] = useState([]);
   const [normalUserSlip, setNormalUserSlip] = useState([]);
-  const [slipPrice, setSlipPrice] = useState("");
+  const [slipPrice, setSlipPrice] = useState("SA"); // Default to Saudi Arabia
   const router = useRouter();
 
   const handleSubmit = async (values, { setSubmitting }) => {
@@ -171,17 +171,17 @@ const typeChoicSlip = () => {
             first_name: '',
             last_name: '',
             passport: '',
-            gender: '',
+            gender: 'male',
             dob: '',
-            marital_status: '',
+            marital_status: 'married',
             passport_issue_date: '',
             passport_expiry_on: '',
             national_id: '',
             reference: '',
-            applied_position: '31',
-            tcountry: '',
-            city: '',
-            visa_type: '',
+            applied_position: '76',
+            tcountry: 'SA',
+            city: '80',
+            visa_type: 'wv',
             medicals: '',
           }}
           validationSchema={validationSchema}

@@ -35,11 +35,16 @@ export const menuItems = [
 
 if (getRole === 'user') {
   menuItems.push(
-    // {
-    //   name: 'Normal Slip',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.userNormalSlip,
-    // },
+    {
+      name: 'Normal Slip',
+      icon: <ExchangeIcon />,
+      href: routes.userNormalSlip,
+    },
+    {
+      name: 'Type Normal Slip',
+      icon: <PlusCircle />,
+      href: routes.typeNormalSlip,
+    },
     // {
     //   name: 'Night Slip',
     //   icon: <ExchangeIcon />,
@@ -60,6 +65,11 @@ if (getRole === 'user') {
       name: 'Choice Slip',
       icon: <ExchangeIcon />,
       href: routes.userChoiceSlip,
+    },
+    {
+      name: 'Type Choice Slip',
+      icon: <PlusCircle />,
+      href: routes.typeChoicSlip,
     },
     // {
     //   name: 'Link Payment',
@@ -96,7 +106,7 @@ if (getRole === 'user') {
       href: routes.normalSlipCompelete,
     },
     {
-      name: 'False Slip ',
+      name: 'False Slip',
       icon: <ExchangeIcon />,
       href: routes.falseSlip,
     },
@@ -109,6 +119,11 @@ if (getRole === 'user') {
       name: 'Choice Slip Processing',
       icon: <PlusCircle />,
       href: routes.choiceSlipProcessing,
+    },
+    {
+      name: 'Choice Slip Complete',
+      icon: <DiskIcon />,
+      href: routes.choiceSlipComplete,
     },
     // {
     //   name: 'Payment Page',
@@ -124,11 +139,6 @@ if (getRole === 'user') {
       name: 'Comilla Payment Page',
       icon: <VoteIcon />,
       href: routes.comillaPayment,
-    },
-    {
-      name: 'Choice Slip Complete',
-      icon: <DiskIcon />,
-      href: routes.choiceSlipComplete,
     },
     {
       name: 'Slip Rate',
