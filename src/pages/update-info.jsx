@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import { headers } from '@/utls/auth';
 import toast from 'react-hot-toast';
+import withAuth from '@/hook/PrivateRoute';
 
 const validationSchema = Yup.object({
     card_holder_name: Yup.string().required('Required'),

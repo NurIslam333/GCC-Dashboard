@@ -7,6 +7,7 @@ import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import { headers } from '@/utls/auth';
+import withAuth from '@/hook/PrivateRoute';
 
 const validationSchema = Yup.object().shape({
   slip_url: Yup.string().required('Payment URL is required'),
@@ -116,4 +117,8 @@ const TypeNormalSlip = () => {
   );
 };
 
-export default TypeNormalSlip;
+export default withAuth(TypeNormalSlip, {
+  isProtectedRoute: true,
+  show: false,
+  requireAdmin: true,
+});

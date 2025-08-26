@@ -11,6 +11,7 @@ import KuetSlip from '@/components/KuetSlip/KuetSlip';
 import axios from 'axios';
 import { headers } from '@/utls/auth';
 import Pusher from 'pusher-js';
+import withAuth from '@/hook/PrivateRoute';
 
 const payment = () => {
   const [cards, setCards] = useState([]);
