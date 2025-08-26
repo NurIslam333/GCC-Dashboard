@@ -295,4 +295,5 @@ const normalSlipPending = () => {
 export default withAuth(normalSlipPending, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

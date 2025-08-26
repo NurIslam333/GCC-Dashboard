@@ -186,4 +186,5 @@ const choiceSlipComplete = () => {
 export default withAuth(choiceSlipComplete, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

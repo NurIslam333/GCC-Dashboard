@@ -99,4 +99,5 @@ const settings = () => {
 export default withAuth(settings, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

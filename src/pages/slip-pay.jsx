@@ -568,4 +568,5 @@ const userChoiceSlip = () => {
 export default withAuth(userChoiceSlip, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

@@ -261,7 +261,9 @@ const choiceSlipPending = () => {
   );
 };
 
+
 export default withAuth(choiceSlipPending, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

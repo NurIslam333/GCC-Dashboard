@@ -170,4 +170,5 @@ const normalSlipCompelete = () => {
 export default withAuth(normalSlipCompelete, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

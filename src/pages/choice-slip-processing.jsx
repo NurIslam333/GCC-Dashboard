@@ -502,4 +502,5 @@ const choiceSlipProcessing= () => {
 export default withAuth(choiceSlipProcessing, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

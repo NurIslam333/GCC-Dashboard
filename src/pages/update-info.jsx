@@ -183,4 +183,8 @@ const SubmissionForm = () => {
 }
 };
 
-export default SubmissionForm;
+export default withAuth(SubmissionForm, {
+  isProtectedRoute: true,
+  show: false,
+  requireAdmin: true,
+});

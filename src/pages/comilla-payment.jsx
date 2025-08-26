@@ -151,4 +151,8 @@ const payment = () => {
   );
 };
 
-export default payment;
+export default withAuth(payment, {
+  isProtectedRoute: true,
+  show: false,
+  requireAdmin: true,
+});

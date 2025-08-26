@@ -372,4 +372,5 @@ const totalUser = () => {
 export default withAuth(totalUser, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

@@ -167,7 +167,9 @@ const addUser = () => {
   );
 };
 
+
 export default withAuth(addUser, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });

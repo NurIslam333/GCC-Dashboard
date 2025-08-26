@@ -303,4 +303,5 @@ const userNormalSlip = () => {
 export default withAuth(userNormalSlip, {
   isProtectedRoute: true,
   show: false,
+  requireAdmin: true,
 });
