@@ -50,15 +50,30 @@ const Index = () => {
         cookiesToSet.forEach(({ name, value, options }) => {
           Cookies.set(name, value, options);
         });
+
+        // Also store in localStorage for better persistence (like regular login)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', response.data.access_token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem('role', response.data.role);
+          
+          // Trigger custom event to notify AuthContext about login (like regular login)
+          const loginEvent = new CustomEvent('auth:login', {
+            detail: {
+              token: response.data.access_token,
+              user: response.data.user,
+              role: response.data.role
+            }
+          });
+          window.dispatchEvent(loginEvent);
+        }
         
         toast.success("Admin Login Successful");
         
-        // Use router.push instead of window.location for better performance
+        // Immediate redirect - AuthContext will process the event instantly (like regular login)
         router.push('/');
       }
     } catch (error) {
-      console.error('Admin login error:', error);
-      
       if (error.code === 'ECONNABORTED') {
         toast.error('Login timeout. Please check your connection and try again.');
       } else if (error.response?.data?.message?.error?.[0]) {

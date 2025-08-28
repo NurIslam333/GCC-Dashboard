@@ -8,6 +8,7 @@ import DrawersContainer from '@/components/drawer-views/container';
 import SettingsButton from '@/components/settings/settings-button';
 import SettingsDrawer from '@/components/settings/settings-drawer';
 import { WalletProvider } from '@/lib/hooks/use-connect';
+import { AuthProvider } from '@/components/auth/AuthContext';
 import 'overlayscrollbars/css/OverlayScrollbars.css';
 // base css file
 import 'swiper/css';
@@ -729,33 +730,35 @@ function CustomApp({ Component, pageProps }) {
         enableSystem={false}
         defaultTheme="light"
       >
-        <WalletProvider>
-          {isLoginPage ? (
-            // If it's the login page
-            <>
-              <DndProvider backend={HTML5Backend}>
-                <Toaster position="top-center" reverseOrder={false} />
-                <Component {...pageProps} />
-              </DndProvider>
-            </>
-          ) : (
-            // Otherwise, wrap in Layout
-            <RootLayout>
-              <DndProvider backend={HTML5Backend}>
-                <Toaster position="top-center" reverseOrder={false} />
-                <Component {...pageProps} />
-              </DndProvider>
-            </RootLayout>
-          )}
-          {/* {getLayout(
-          <Component {...pageProps} />
-          )} */}
+        <AuthProvider>
+          <WalletProvider>
+            {isLoginPage ? (
+              // If it's the login page
+              <>
+                <DndProvider backend={HTML5Backend}>
+                  <Toaster position="top-center" reverseOrder={false} />
+                  <Component {...pageProps} />
+                </DndProvider>
+              </>
+            ) : (
+              // Otherwise, wrap in Layout
+              <RootLayout>
+                <DndProvider backend={HTML5Backend}>
+                  <Toaster position="top-center" reverseOrder={false} />
+                  <Component {...pageProps} />
+                </DndProvider>
+              </RootLayout>
+            )}
+            {/* {getLayout(
+            <Component {...pageProps} />
+            )} */}
 
-          <SettingsButton />
-          <SettingsDrawer />
-          <ModalsContainer />
-          <DrawersContainer />
-        </WalletProvider>
+            <SettingsButton />
+            <SettingsDrawer />
+            <ModalsContainer />
+            <DrawersContainer />
+          </WalletProvider>
+        </AuthProvider>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
       {process.env.NODE_ENV === 'development' && <PerformanceDashboard />}

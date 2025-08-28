@@ -8,147 +8,141 @@ import { ExchangeIcon } from '@/components/icons/exchange';
 import { VoteIcon } from '@/components/icons/vote-icon';
 import { PlusCircle } from '@/components/icons/plus-circle';
 import { CompassIcon } from '@/components/icons/compass';
-import Cookies from 'js-cookie';
+import { useAuth } from '@/components/auth/AuthContext';
+import { useEffect, useState } from 'react';
 
-const getRole = Cookies.get('role');
+export const useMenuItems = () => {
+  const { role, isLoading } = useAuth();
+  const [menuItems, setMenuItems] = useState([
+    {
+      name: 'Dashboard',
+      icon: <HomeIcon />,
+      href: routes.home,
+    },
+  ]);
 
+
+
+  useEffect(() => {
+    // Only show loading if we don't have a role yet
+    if (isLoading && !role) {
+      return;
+    }
+
+    // If we have a role, generate menu immediately
+    if (role) {
+      // Role confirmed, generating menu immediately
+    }
+
+    const baseItems = [
+      {
+        name: 'Dashboard',
+        icon: <HomeIcon />,
+        href: routes.home,
+      },
+    ];
+
+    if (role === 'user') {
+      setMenuItems([
+        ...baseItems,
+        {
+          name: 'Normal Slip',
+          icon: <ExchangeIcon />,
+          href: routes.userNormalSlip,
+        },
+        {
+          name: 'Type Normal Slip',
+          icon: <PlusCircle />,
+          href: routes.typeNormalSlip,
+        },
+        {
+          name: 'Choice Slip',
+          icon: <ExchangeIcon />,
+          href: routes.userChoiceSlip,
+        },
+        {
+          name: 'Type Choice Slip',
+          icon: <PlusCircle />,
+          href: routes.typeChoicSlip,
+        },
+        {
+          name: 'Slip Rate',
+          icon: <ExchangeIcon />,
+          href: routes.slipRate,
+        },
+      ]);
+    } else if (role === 'admin') {
+      setMenuItems([
+        ...baseItems,
+        {
+          name: 'Total User',
+          icon: <FarmIcon />,
+          href: routes.totalUser,
+        },
+        {
+          name: 'Normal Slip Pending',
+          icon: <ExchangeIcon />,
+          href: routes.normalSlipPending,
+        },
+        {
+          name: 'Normal Slip Complete',
+          icon: <PoolIcon />,
+          href: routes.normalSlipCompelete,
+        },
+        {
+          name: 'False Slip',
+          icon: <ExchangeIcon />,
+          href: routes.falseSlip,
+        },
+        {
+          name: 'Choice Slip Pending',
+          icon: <CompassIcon />,
+          href: routes.choiceSlipPending,
+        },
+        {
+          name: 'Choice Slip Processing',
+          icon: <PlusCircle />,
+          href: routes.choiceSlipProcessing,
+        },
+        {
+          name: 'Choice Slip Complete',
+          icon: <DiskIcon />,
+          href: routes.choiceSlipComplete,
+        },
+        {
+          name: 'Dhaka Payment Page',
+          icon: <VoteIcon />,
+          href: routes.dhakaPayment,
+        },
+        {
+          name: 'Comilla Payment Page',
+          icon: <VoteIcon />,
+          href: routes.comillaPayment,
+        },
+        {
+          name: 'Slip Rate',
+          icon: <ProfileIcon />,
+          href: routes.medicalSerialList,
+        },
+        {
+          name: 'Setting',
+          icon: <ProfileIcon />,
+          href: routes.settings,
+        }
+      ]);
+    } else {
+      setMenuItems(baseItems);
+    }
+  }, [role, isLoading]);
+
+  return { menuItems, isLoading };
+};
+
+// Legacy export for backward compatibility
 export const menuItems = [
   {
     name: 'Dashboard',
     icon: <HomeIcon />,
     href: routes.home,
   },
-
-  // user
-  // getRole !== ' user' && {
-  //   name: 'User Normal Slip',
-  //   icon: <ExchangeIcon />,
-  //   href: routes.userNormalSlip,
-  // },
-
-  // getRole !== ' user' && {
-  //   name: 'User Choice Slip',
-  //   icon: <ExchangeIcon />,
-  //   href: routes.userChoiceSlip,
-  // },
 ];
-
-if (getRole === 'user') {
-  menuItems.push(
-    {
-      name: 'Normal Slip',
-      icon: <ExchangeIcon />,
-      href: routes.userNormalSlip,
-    },
-    {
-      name: 'Type Normal Slip',
-      icon: <PlusCircle />,
-      href: routes.typeNormalSlip,
-    },
-    // {
-    //   name: 'Night Slip',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.nightSlip,
-    // },
-
-    // {
-    //   name: 'Slip Pay',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.userChoiceSlip,
-    // },
-    // {
-    //   name: 'Slip Pay',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.userChoiceSlip,
-    // },
-    {
-      name: 'Choice Slip',
-      icon: <ExchangeIcon />,
-      href: routes.userChoiceSlip,
-    },
-    {
-      name: 'Type Choice Slip',
-      icon: <PlusCircle />,
-      href: routes.typeChoicSlip,
-    },
-    // {
-    //   name: 'Link Payment',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.linkPayment,
-    // },
-    // {
-    //   name: 'Link Payment Complete',
-    //   icon: <ExchangeIcon />,
-    //   href: routes.linkPaymentComplete,
-    // },
-    {
-      name: 'Slip Rate',
-      icon: <ExchangeIcon />,
-      href: routes.slipRate,
-    },
-  
-  );
-} else {
-  menuItems.push(
-    {
-      name: 'Total User',
-      icon: <FarmIcon />,
-      href: routes.totalUser,
-    },
-    {
-      name: 'Normal Slip Pending',
-      icon: <ExchangeIcon />,
-      href: routes.normalSlipPending,
-    },
-    {
-      name: 'Normal Slip Complete',
-      icon: <PoolIcon />,
-      href: routes.normalSlipCompelete,
-    },
-    {
-      name: 'False Slip',
-      icon: <ExchangeIcon />,
-      href: routes.falseSlip,
-    },
-    {
-      name: 'Choice Slip Pending',
-      icon: <CompassIcon />,
-      href: routes.choiceSlipPending,
-    },
-    {
-      name: 'Choice Slip Processing',
-      icon: <PlusCircle />,
-      href: routes.choiceSlipProcessing,
-    },
-    {
-      name: 'Choice Slip Complete',
-      icon: <DiskIcon />,
-      href: routes.choiceSlipComplete,
-    },
-    // {
-    //   name: 'Payment Page',
-    //   icon: <VoteIcon />,
-    //   href: routes.payment,
-    // },
-    {
-      name: 'Dhaka Payment Page',
-      icon: <VoteIcon />,
-      href: routes.dhakaPayment,
-    },
-    {
-      name: 'Comilla Payment Page',
-      icon: <VoteIcon />,
-      href: routes.comillaPayment,
-    },
-    {
-      name: 'Slip Rate',
-      icon: <ProfileIcon />,
-      href: routes.medicalSerialList,
-    },
-    {
-      name: 'Setting',
-      icon: <ProfileIcon />,
-      href: routes.settings,
-    }
-  );
-}

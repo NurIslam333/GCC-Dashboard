@@ -11,10 +11,11 @@ const withAuth = (Component = null, options = {}) => {
         };
 
         componentDidMount() {
-            const token = Cookies.get('token');
-            const userCookie = Cookies.get('user');
+            // Check both cookies and localStorage for authentication data
+            const token = Cookies.get('token') || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+            const userCookie = Cookies.get('user') || (typeof window !== 'undefined' ? localStorage.getItem('user') : null);
             const user = userCookie ? JSON.parse(userCookie) : null;
-            const role = Cookies.get('role');
+            const role = Cookies.get('role') || (typeof window !== 'undefined' ? localStorage.getItem('role') : null);
 
             // Route is protected but not authenticated. So redirect to login page
             if (options.isProtectedRoute && !token) {

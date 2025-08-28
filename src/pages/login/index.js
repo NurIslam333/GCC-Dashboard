@@ -50,15 +50,33 @@ const Index = () => {
         cookiesToSet.forEach(({ name, value, options }) => {
           Cookies.set(name, value, options);
         });
+
+        // Also store in localStorage for better persistence
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', response.data.access_token);
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem('role', response.data.role);
+          
+          // Trigger custom event to notify AuthContext about login
+          const loginEvent = new CustomEvent('auth:login', {
+            detail: {
+              token: response.data.access_token,
+              user: response.data.user,
+              role: response.data.role
+            }
+          });
+          window.dispatchEvent(loginEvent);
+          
+          // Immediate redirect - AuthContext will process the event instantly
+          router.push('/');
+        } else {
+          // If no window, redirect immediately
+          router.push('/');
+        }
         
         toast.success("Login Successful");
-        
-        // Use router.push instead of window.location for better performance
-        router.push('/');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      
       if (error.code === 'ECONNABORTED') {
         toast.error('Login timeout. Please check your connection and try again.');
       } else if (error.response?.data?.message?.error?.[0]) {
@@ -118,7 +136,7 @@ const Index = () => {
                   type="password"
                   name="password"
                   placeholder="Enter Your Password"
-                  className={`mt-2 w-full rounded-lg py-3 px-4 border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`mt-2 w-full rounded-lg py-3 px-4 border transition-colors focus:ring-blue-500 ${
                     errors.password && touched.password 
                       ? 'border-red-300 focus:ring-red-500' 
                       : 'border-gray-300 focus:border-blue-500'

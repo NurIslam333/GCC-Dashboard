@@ -69,7 +69,7 @@ const RoleTest: React.FC = () => {
         <h4 className="mb-3 font-medium">Test Actions:</h4>
         <div className="space-y-2">
           <Button
-            onClick={() => console.log('Role info:', { isAdmin, isUser, role, hasAccess })}
+            onClick={() => {}}
             variant="ghost"
             size="small"
             className="w-full"
@@ -81,7 +81,7 @@ const RoleTest: React.FC = () => {
             onClick={() => {
               const testPages = ['/', '/choice-slip', '/slip-rate', '/normal-slip'];
               testPages.forEach(page => {
-                console.log(`${page}: ${hasAccess('admin') ? 'Accessible' : 'Restricted'}`);
+                // Log role access info
               });
             }}
             variant="ghost"

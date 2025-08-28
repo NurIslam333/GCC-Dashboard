@@ -9,6 +9,8 @@ import SearchButton from '@/components/search/button';
 import { useIsMounted } from '@/lib/hooks/use-is-mounted';
 import { useDrawer } from '@/components/drawer-views/context';
 import WalletConnect from '@/components/nft/wallet-connect';
+import { useAuth } from '@/components/auth/AuthContext';
+import Button from '@/components/ui/button';
 import routes from '@/config/routes';
 
 function NotificationButton() {
@@ -23,9 +25,39 @@ function NotificationButton() {
 }
 
 function HeaderRightArea() {
+  const { isAuthenticated, logout, user, isLoading } = useAuth();
+
+  // Show loading state ONLY when we have no user and are not authenticated
+  // If we have a user, NEVER show loading - render immediately
+  if (!user && !isAuthenticated) {
+    return (
+      <div className="relative order-last flex shrink-0 items-center gap-4 sm:gap-6 lg:gap-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+        <WalletConnect />
+      </div>
+    );
+  }
+
+  // If we have a user, render immediately (even if data is still loading)
+  if (user && isAuthenticated) {
+    // User and auth confirmed, rendering header immediately
+  }
+
   return (
     <div className="relative order-last flex shrink-0 items-center gap-4 sm:gap-6 lg:gap-8">
-      {/* <NotificationButton /> */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-gray-600 dark:text-gray-300">
+          Welcome, {user?.name || 'User'}
+        </span>
+        <Button
+          onClick={logout}
+          variant="transparent"
+          size="small"
+          className="text-red-600 border-red-600 hover:bg-red-600 hover:text-black"
+        >
+          Logout
+        </Button>
+      </div>
       <WalletConnect />
     </div>
   );

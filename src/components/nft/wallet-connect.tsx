@@ -94,7 +94,7 @@ export default function WalletConnect({
       ) : (
         <Button
           onClick={() => openModal('WALLET_CONNECT_VIEW')}
-          className={cn('shadow-main hover:shadow-large', btnClassName)}
+          className={cn('shadow-main hover:shadow-large hidden', btnClassName)}
         >
           LogOut
         </Button>

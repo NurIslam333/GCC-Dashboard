@@ -14,9 +14,35 @@ export const useRoleAccess = (): UseRoleAccessReturn => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const userRole = Cookies.get('role');
-    setRole(userRole || null);
+    const getUserRole = () => {
+      // First try to get from cookies
+      let userRole = Cookies.get('role');
+      
+      // If not in cookies, try localStorage
+      if (!userRole && typeof window !== 'undefined') {
+        userRole = localStorage.getItem('role');
+      }
+      
+      return userRole || null;
+    };
+
+    const userRole = getUserRole();
+    setRole(userRole);
     setIsLoading(false);
+  }, []);
+
+  // Listen for storage changes (when user logs in/out in another tab)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'role') {
+        setRole(e.newValue);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
+    }
   }, []);
 
   const isAdmin = role === 'admin';
