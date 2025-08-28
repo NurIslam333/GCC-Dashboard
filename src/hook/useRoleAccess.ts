@@ -14,16 +14,16 @@ export const useRoleAccess = (): UseRoleAccessReturn => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getUserRole = () => {
+    const getUserRole = (): string | null => {
       // First try to get from cookies
-      let userRole = Cookies.get('role');
+      let userRole: string | null = Cookies.get('role') || null;
       
       // If not in cookies, try localStorage
       if (!userRole && typeof window !== 'undefined') {
         userRole = localStorage.getItem('role');
       }
       
-      return userRole || null;
+      return userRole;
     };
 
     const userRole = getUserRole();
