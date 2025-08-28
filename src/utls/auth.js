@@ -45,6 +45,10 @@ export const logout = () => {
     localStorage.removeItem('user');
     localStorage.removeItem('role');
     
+    // Clear any cached stats data that might cause flash
+    localStorage.removeItem('adminStats');
+    localStorage.removeItem('userStats');
+    
     // Trigger custom event to notify AuthContext about logout
     const logoutEvent = new CustomEvent('auth:logout');
     window.dispatchEvent(logoutEvent);

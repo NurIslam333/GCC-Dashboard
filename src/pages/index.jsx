@@ -73,6 +73,15 @@ const HomePage = () => {
     }
   }, [role, isLoading, isAuthenticated, handleFetchNormalUser, handleFetchAdminUser]);
 
+  // IMMEDIATE DATA CLEANUP: Clear all data when logout happens to prevent flash of old content
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Clear all data immediately when not authenticated
+      setNormalUserSlip([]);
+      setAdminUserSlip([]);
+    }
+  }, [isAuthenticated]);
+
     const handleFetchNormalUser = useCallback(async () => {
     try {
       if (role === 'user') {
@@ -406,6 +415,11 @@ const HomePage = () => {
       };
     }
   }, [csp_date, nnp_date, nsp_date, fsp_date, tsp_date, nsc_date, csc_date, csc_end_date, csc_start_date, nsc_end_date, nsc_start_date, tcs_date, tcs_end_date, tcs_start_date, tea_date, tea_end_date, tea_start_date]);
+
+  // IMMEDIATE LOGOUT CHECK: If not authenticated, show nothing to prevent flash of old data
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // EXTREMELY AGGRESSIVE: Show loading state ONLY when we have absolutely nothing
   // If we have ANY role or authentication, NEVER show loading - render immediately

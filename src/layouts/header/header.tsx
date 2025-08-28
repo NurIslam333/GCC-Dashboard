@@ -27,6 +27,11 @@ function NotificationButton() {
 function HeaderRightArea() {
   const { isAuthenticated, logout, user, isLoading } = useAuth();
 
+  // IMMEDIATE LOGOUT CHECK: If not authenticated, show nothing to prevent flash of old content
+  if (!isAuthenticated) {
+    return null;
+  }
+
   // Show loading state ONLY when we have no user and are not authenticated
   // If we have a user, NEVER show loading - render immediately
   if (!user && !isAuthenticated) {

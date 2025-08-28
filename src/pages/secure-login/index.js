@@ -31,6 +31,12 @@ const Index = () => {
       setIsLoggingIn(true);
       setSubmitting(true);
       
+      // Check if API URL is configured
+      if (!process.env.API_URL) {
+        toast.error('API configuration error. Please contact support.');
+        return;
+      }
+      
       // Optimize API call with timeout and better error handling
       const response = await axios.post(`${process.env.API_URL}/admin/login`, values, {
         headers: {
@@ -80,10 +86,26 @@ const Index = () => {
         toast.error(error.response.data.message.error[0]);
       } else if (error.response?.status === 401) {
         toast.error('Invalid admin credentials');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. Please check your admin credentials.');
+      } else if (error.response?.status === 404) {
+        toast.error('Admin login service not found. Please contact support.');
+      } else if (error.response?.status === 422) {
+        toast.error('Invalid data format. Please check your input.');
       } else if (error.response?.status >= 500) {
         toast.error('Server error. Please try again later.');
+      } else if (error.message === 'Network Error') {
+        toast.error('Network error. Please check your internet connection.');
+      } else if (error.message.includes('timeout')) {
+        toast.error('Request timeout. Please try again.');
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else if (error.message) {
+        toast.error(`Admin login error: ${error.message}`);
       } else {
-        toast.error('Login failed. Please try again.');
+        toast.error('Admin login failed. Please check your connection and try again.');
       }
     } finally {
       setIsLoggingIn(false);

@@ -16,6 +16,11 @@ export default function Sidebar({ className }: { className?: string }) {
   const { menuItems, isLoading } = useMenuItems();
   const { user, role, isAuthenticated } = useAuth();
 
+  // IMMEDIATE LOGOUT CHECK: If not authenticated, show nothing to prevent flash of old content
+  if (!isAuthenticated) {
+    return null;
+  }
+
   // Show loading state ONLY when we have no role and are not authenticated
   // If we have a role, NEVER show loading - render immediately
   if (!role && !isAuthenticated) {

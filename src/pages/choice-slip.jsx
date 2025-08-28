@@ -903,7 +903,7 @@ const userChoiceSlip = () => {
                               </th>
                             </tr>
                           </thead>
-                                                     <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
+                              <tbody className="text-xs font-medium text-gray-900 dark:text-white 3xl:text-sm">
                                    {Array.isArray(normalUserSlip) && normalUserSlip.length > 0 &&
                                normalUserSlip.map((item, i) => {
                                       // Additional safety check for item

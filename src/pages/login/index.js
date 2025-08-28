@@ -31,6 +31,12 @@ const Index = () => {
       setIsLoggingIn(true);
       setSubmitting(true);
       
+      // Check if API URL is configured
+      if (!process.env.API_URL) {
+        toast.error('API configuration error. Please contact support.');
+        return;
+      }
+      
       // Optimize API call with timeout and better error handling
       const response = await axios.post(`${process.env.API_URL}/login`, values, {
         headers: {
@@ -77,16 +83,48 @@ const Index = () => {
         toast.success("Login Successful");
       }
     } catch (error) {
+      // Log error details for debugging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Login Error Details:', {
+          message: error.message,
+          code: error.code,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            timeout: error.config?.timeout
+          }
+        });
+      }
+
       if (error.code === 'ECONNABORTED') {
         toast.error('Login timeout. Please check your connection and try again.');
       } else if (error.response?.data?.message?.error?.[0]) {
         toast.error(error.response.data.message.error[0]);
       } else if (error.response?.status === 401) {
         toast.error('Invalid email or password');
+      } else if (error.response?.status === 403) {
+        toast.error('Access denied. Please check your credentials.');
+      } else if (error.response?.status === 404) {
+        toast.error('Login service not found. Please contact support.');
+      } else if (error.response?.status === 422) {
+        toast.error('Invalid data format. Please check your input.');
       } else if (error.response?.status >= 500) {
         toast.error('Server error. Please try again later.');
+      } else if (error.message === 'Network Error') {
+        toast.error('Network error. Please check your internet connection.');
+      } else if (error.message.includes('timeout')) {
+        toast.error('Request timeout. Please try again.');
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else if (error.response?.data?.error) {
+        toast.error(error.response.data.error);
+      } else if (error.message) {
+        toast.error(`Login error: ${error.message}`);
       } else {
-        toast.error('Login failed. Please try again.');
+        toast.error('Login failed. Please check your connection and try again.');
       }
     } finally {
       setIsLoggingIn(false);

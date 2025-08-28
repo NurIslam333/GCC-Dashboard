@@ -75,16 +75,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsAuthenticated(false);
     setUser(null);
     setRole(null);
+    setIsLoading(false);
     
     // Clear storage and trigger logout event
     logout();
     
-    // Redirect to login page after a brief delay to ensure state is cleared
-    setTimeout(() => {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-    }, 100);
+    // IMMEDIATE redirect using router.replace for cleaner transition
+    router.replace('/login');
   };
 
   useEffect(() => {
@@ -171,18 +168,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       };
 
-          const handleLogout = () => {
+          const handleLogoutEvent = () => {
         // Clear state immediately
         setIsAuthenticated(false);
         setUser(null);
         setRole(null);
+        setIsLoading(false);
         
-        // Redirect to login page after a brief delay
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
-        }, 100);
+        // IMMEDIATE redirect using router.replace for cleaner transition
+        router.replace('/login');
       };
 
           // Listen for storage changes (when user logs in/out in another tab)
@@ -195,14 +189,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (typeof window !== 'undefined') {
         // Listen for custom auth events
         window.addEventListener('auth:login', handleLogin as EventListener);
-        window.addEventListener('auth:login', handleLogout);
+        window.addEventListener('auth:logout', handleLogoutEvent);
         
         // Listen for storage changes
         window.addEventListener('storage', handleStorageChange);
         
         return () => {
           window.removeEventListener('auth:login', handleLogin as EventListener);
-          window.removeEventListener('auth:logout', handleLogout);
+          window.removeEventListener('auth:logout', handleLogoutEvent);
           window.removeEventListener('storage', handleStorageChange);
         };
       }
